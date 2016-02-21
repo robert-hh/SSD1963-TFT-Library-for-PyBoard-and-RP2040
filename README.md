@@ -34,29 +34,46 @@ mytft = TFT(model, mode, width, height)
 Functions:
 setColor(red, green, blue) 
     # set the foreground color, used by the draw functions, range 0..255 each; the lower bits may be ignored
+
 setBGColor(red, green, blue) 
     # set the background color, used by clrSCR(), range 0..255 each; the lower bits may be ignored
+
 clrSCR()
     # set the total screen to the background color.
+
 drawPixel(x, y)
     # set a pixel at position x, y with the foreground color
+
 drawLine(x1, y2, x2, y2)
     # draw a line from x1, y1 to x2, y2. If the line is horizontal or vertical, 
       the respective functions are used. Otherwise drawPixel is used. That's where Python gets slow.
+
 drawHLine(x, y, len)
     # draw a horizontal line from x,y of len length
+
 drawVLine(x, y, len)
     # draw a vertical line from x,y of len length
+
 drawRectangle(x1, y1, x2, y2)
     # draw a rectangle from x1, y1, to x2, y2. The width of the line is 1 pixel.
+
 fillRectangle(x1, y1, x2, y2)
     # fill a rectangle from x1, y1, to x2, y2 with the foreground color.
+
 drawBitmap(x, y, width, height, data)
-    # draw a bitmap at location x, y dimension width x height. Data must contain the bitmap data and must be of type bytearray or buffer. It must contain 3 bytes per pixel (red, green, blue). The total size of data must be width * height * 3. No type checking is performed.
+    # draw a bitmap at location x, y dimension width x height. Data must contain the bitmap 
+      data and must be of type bytearray or buffer. It must contain 3 bytes per 
+      pixel (red, green, blue). The total size of data must be width * height * 3. 
+      No type checking is performed.
+
 drawBitmap565(x, y, width, height, data)
-    # draw a bitmap at location x, y dimension width x height. Data must contain the bitmap data and must be of type bytearray or buffer. It must contain 2 bytes per pixel with packed color data (bbbbbggggggrrrrr) in little endian format (the byte with red first). The total size of data must be width * height * 2. No type checking is performed.
+    # draw a bitmap at location x, y dimension width x height. Data must contain the bitmap 
+      data and must be of type bytearray or buffer. It must contain 2 bytes per pixel 
+      with packed color data (bbbbbggggggrrrrr) in little endian format (the byte with 
+      red first). The total size of data must be width * height * 2. No type checking is performed.
     
-The remaining functions are the lower level interfaces, that obviously can be used directly. The documentation follows later on.
+The remaining functions are the lower level interfaces, that obviously can be used directly. 
+The documentation follows later on.
 ```
 
 **To Do**
@@ -74,7 +91,7 @@ The remaining functions are the lower level interfaces, that obviously can be us
 
 - tft.py: Source file with comments.
 - README.md: this one
-- Sample raw bitmap file with 565 encoding (16 bits per Pixel) (showing my late son in some car)
+- Sample raw bitmap file with 565 encoding (16 bits per Pixel)
 
 **Short Version History**
 
