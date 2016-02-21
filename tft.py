@@ -203,6 +203,49 @@ class TFT:
         self.setXY(x1, y1, x2, y2) # set display window
         self.fillSCR_AS(self.colorvect, (x2 - x1 + 1) * (y2 - y1 + 1))
 #
+# draw a circle at x, y with radius
+#
+    def drawCircle(self, x, y, radius):
+    
+        f = 1 - radius
+        ddF_x = 1
+        ddF_y = -2 * radius
+        x1 = 0
+        y1 = radius
+
+        self.drawPixel(x, y + radius)
+        self.drawPixel(x, y - radius)
+        self.drawPixel(x + radius, y)
+        self.drawPixel(x - radius, y)
+
+        while x1 < y1:
+            if f >= 0:
+	            y1 -= 1
+	            ddF_y += 2
+	            f += ddF_y
+            x1 += 1
+            ddF_x += 2
+            f += ddF_x
+            self.drawPixel(x + x1, y + y1)
+            self.drawPixel(x - x1, y + y1)
+            self.drawPixel(x + x1, y - y1)
+            self.drawPixel(x - x1, y - y1)
+            self.drawPixel(x + y1, y + x1)
+            self.drawPixel(x - y1, y + x1)
+            self.drawPixel(x + y1, y - x1)
+            self.drawPixel(x - y1, y - x1)
+#
+# fill a circle at x, y with radius
+#
+    def fillCircle(self, x, y, radius):
+    
+        for y1 in range (-radius, 1): 
+            for x1 in range (-radius, 1):
+                if x1*x1+y1*y1 <= radius*radius: 
+                    self.drawHLine(x + x1, y + y1, 2 * (-x1))
+                    self.drawHLine(x + x1, y - y1, 2 * (-x1))
+                    break;
+#
 # Draw a bitmap at x,y with size sx, sy
 # The data must contain 3 bytes/pixel red/green/blue
 # Other versions with packed data for the various BMP formats will follow.
@@ -225,11 +268,14 @@ class TFT:
         size = len(s)
         bb = bytearray(' ' * size * 24)
         bitmap = bytearray(' ' * size)
-        colorvect = self.colorvect + self.BGcolorvect
+        colorvect = self.colorvect + self.BGcolorvect       
+
         for row in range(12):
             bp = 0
             for col in range(size):
-                bitmap[col] = smallfont.SmallFont[((ord(s[col]) & 0x7f) - 0x20) * 12 + row]
+                index = ((ord(s[col]) & 0x7f) - 0x20)
+                if index < 0: index = 0
+                bitmap[col] = smallfont.SmallFont[index * 12 + row]
             self.expandBitmap(bb, bitmap, size, colorvect)
             self.drawBitmap(x, y + row, size * 8, 1, bb)
 #
@@ -643,7 +689,7 @@ class TFT:
             gpiob[1] = RD       # set RD low. C/D still high
             gpiob[0] = RD       # set RD high again
             data[i] = gpioa[stm.GPIO_IDR]  # get data from port A
-        gpioam[0] = 0x99  # configure X1..X8 as Output
+        gpioam[0] = 0x5555  # configure X1..X8 as Output
 
 #
 # Some sample code
@@ -653,12 +699,20 @@ def main():
 
     b = bytearray([0 for i in range(480 * 2)])
 
-    text = input("What shall I print?")
-    mytft.setColor(255, 255, 255)
-    mytft.setBGColor(0, 0, 0x38)
+    buf = bytearray("     ")
+    mytft.tft_read_data(0xa1, buf, 5)
+    print (repr(buf)) 
+    
+    mytft.setColor(255, 255, 0)
+    mytft.setBGColor(0, 0, 0)
+    text = input("Circle1")
     start = pyb.millis()
-    mytft.printString(0, 10, "Hello World, this is what you entered: ")
-    mytft.printString(0, 25, text)
+    mytft.drawCircle(100, 100, 90)
+    time = pyb.elapsed_millis(start)
+    print("time = ", time)
+    text = input("Circle2")
+    start = pyb.millis()
+    mytft.fillCircle(300, 150, 90)
     time = pyb.elapsed_millis(start)
     print("time = ", time)
     

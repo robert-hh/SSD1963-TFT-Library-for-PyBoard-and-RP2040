@@ -27,9 +27,11 @@ In total, the speed is reasonable. Clearing the 480x272 display (= filling it wi
 Create instance:
 
 mytft = TFT(model, width, height)
-    model: String with the controlle model. At the moment, "SSD1963" is the only one supported
-    width: Width of the LCD in pixels. If width is less than height, landscape mode is assumed.
+    model: String with the controller model. At the moment, "SSD1963" is the only one supported
+    width: Width of the LCD in pixels. 
     height: Height of the LCD in pixels
+    
+    If width is less than height, PORTRAIT mode is assumed.
 
 Functions:
 setColor(red, green, blue) 
@@ -61,6 +63,12 @@ drawRectangle(x1, y1, x2, y2)
 fillRectangle(x1, y1, x2, y2)
     # fill a rectangle from x1, y1, to x2, y2 with the foreground color.
 
+drawCircle(x, y, radius)
+    # draw a circle at x, y with radius diameter. The width of the line is 1 pixel.
+
+fillCircle(x, y, radius)
+    # draw a filled circle at x, y with radius diameter.
+
 drawBitmap(x, y, width, height, data)
     # draw a bitmap at location x, y dimension width x height. Data must contain the bitmap 
       data and must be of type bytearray or buffer. It must contain 3 bytes per 
@@ -84,7 +92,6 @@ The documentation may follow later on, some documentations is inline.
 - Fiddle out the TFT controller settings about the LCD size, such that there is a robust definition of the mode. The UTFT library seems to implement stuff, that the controller would handle for you.
 - Try other display sizes
 - Make a nice interface for BMP type files, such that they can be displayed in a uniform matter.
-- Implement some more of the basic functions (like Circle); that'll be easy, since it only uses drawPixel and drawLine
 
 **Things beyond the horizon at the moment**
 - Other text fonts
@@ -92,7 +99,6 @@ The documentation may follow later on, some documentations is inline.
 - Other Controllers
 
 **Files:**
-
 - tft.py: Source file with comments.
 - smallfont.py: Bittpattern of a small font, Origin: Rinky-Dink Electronics, Henning Karlsen
 - README.md: this one
@@ -102,4 +108,5 @@ The documentation may follow later on, some documentations is inline.
 
 **0.1** Initial release with some basic functions, limited to a 480x272 display in landscape mode and PyBoard. More a proof of feasibilty.
 
+**0.2** Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and fillCircle()
 
