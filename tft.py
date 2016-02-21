@@ -223,20 +223,35 @@ class TFT:
 #
     def printString(self, x, y, s):
         size = len(s)
-        bb = bytearray('*' * size * 24)
+        bb = bytearray(' ' * size * 24)
+        bitmap = bytearray(' ' * size)
+        colorvect = self.colorvect + self.BGcolorvect
         for row in range(12):
             bp = 0
             for col in range(size):
-                bitmap = smallfont.SmallFont[((ord(s[col]) & 0x7f) - 0x20) * 12 + row]
-                mask = 0x80
-                for bit in range(8):
-                    if bitmap & mask:
-                        bb[bp:bp+3] = self.colorvect
-                    else:
-                        bb[bp:bp+3] = self.BGcolorvect
-                    bp += 3
-                    mask >>= 1
+                bitmap[col] = smallfont.SmallFont[((ord(s[col]) & 0x7f) - 0x20) * 12 + row]
+            self.expandBitmap(bb, bitmap, size, colorvect)
             self.drawBitmap(x, y + row, size * 8, 1, bb)
+#
+# Print string helper function for expanding the bitmap
+# 
+    @staticmethod
+    @micropython.viper        
+    def expandBitmap(buf: ptr8, bitmap: ptr8, size: int, color: ptr8):
+        bp = 0
+        for col in range(size):
+            bits = bitmap[col]
+            for i in range(8):
+                if bits & 0x80:
+                    buf[bp] = color[0]
+                    buf[bp + 1] = color[1]
+                    buf[bp + 2] = color[2]
+                else:
+                    buf[bp] = color[3]
+                    buf[bp + 1] = color[4]
+                    buf[bp + 2] = color[5]
+                bits <<= 1
+                bp += 3
 #
 # Set the addres range for various draw copmmands and set the TFT for expecting data
 #
@@ -628,7 +643,7 @@ class TFT:
             gpiob[1] = RD       # set RD low. C/D still high
             gpiob[0] = RD       # set RD high again
             data[i] = gpioa[stm.GPIO_IDR]  # get data from port A
-        gpioam[0] = 0x99  # condifgure X1..X8 as Output
+        gpioam[0] = 0x99  # configure X1..X8 as Output
 
 #
 # Some sample code
@@ -638,11 +653,12 @@ def main():
 
     b = bytearray([0 for i in range(480 * 2)])
 
+    text = input("What shall I print?")
     mytft.setColor(255, 255, 255)
     mytft.setBGColor(0, 0, 0x38)
     start = pyb.millis()
-    mytft.printString(0, 10, "Hello World, this is a pretty long Text")
-    mytft.printString(0, 20, "-0123456789-abcdefghijklmnopqrstuvwxyz-")
+    mytft.printString(0, 10, "Hello World, this is what you entered: ")
+    mytft.printString(0, 25, text)
     time = pyb.elapsed_millis(start)
     print("time = ", time)
     

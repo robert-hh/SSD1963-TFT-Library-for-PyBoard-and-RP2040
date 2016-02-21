@@ -74,9 +74,7 @@ drawBitmap565(x, y, width, height, data)
       red first). The total size of data must be width * height * 2. No type checking is performed.
       
 printString(x, y, s)
-    # Print a string s at location x, y using a small font. This function
-      is pretty slow, because it does a lot of bit fiddling. At least some
-      of it should be replaced by a viper subroutine.
+    # Print a string s at location x, y using a small font. 
     
 The remaining functions are the lower level interfaces, that obviously can be used directly. 
 The documentation may follow later on, some documentations is inline.
@@ -86,10 +84,10 @@ The documentation may follow later on, some documentations is inline.
 - Fiddle out the TFT controller settings about the LCD size, such that there is a robust definition of the mode. The UTFT library seems to implement stuff, that the controller would handle for you.
 - Try other display sizes
 - Make a nice interface for BMP type files, such that they can be displayed in a uniform matter.
-- basic support for text; that could be tricky to make it efficient
 - Implement some more of the basic functions (like Circle); that'll be easy, since it only uses drawPixel and drawLine
 
 **Things beyond the horizon at the moment**
+- Other text fonts
 - Support the touch interface; but that could already be available somewhere - it's based on SPI
 - Other Controllers
 
