@@ -8,6 +8,8 @@
 # Then LED and /CS must be hard tied to Vcc and GND, and /RD is not used.
 #
 import pyb, stm
+import smallfont
+
 
 # define constants
 #
@@ -24,7 +26,7 @@ LANDSCAPE = const(1)
 
 class TFT:
     
-    def __init__(self, model = "SSD1963", mode = LANDSCAPE, width = 480, height = 272):
+    def __init__(self, model = "SSD1963", width = 480, height = 272):
 #
 # For convenience, define X1..X1 and Y9..Y12 as output port using thy python functions.
 # X1..X8 will be redefind on the fly as Input by accessing the MODER control registers 
@@ -32,23 +34,24 @@ class TFT:
 # since it need long delays anyhow, 5 and 15 ms vs. 10 µs.
 #
         self.model = model
-        self.mode = mode
         self.disp_x_size = width - 1
         self.disp_y_size = height - 1
-        self.X_vect = bytearray([0, 0, self.disp_x_size >> 8, self.disp_x_size & 0xff])
-        self.Y_vect = bytearray([0, 0, self.disp_y_size >> 8, self.disp_y_size & 0xff])
+        if width < height:
+            self.mode = PORTRAIT
+        else:
+            self.mode = LANDSCAPE
         
         self.setColor(255, 255, 255) # set FG color to white as can be.
         self.setBGColor(0, 0, 0)     # set BG to black
         
-        
+# special treat for BG LED
+        self.pin_led = pyb.Pin("Y3", pyb.Pin.OUT_PP)
+        self.pin_led.value(0)  ## switch BG LED off
+
         for pin_name in ["X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", 
                    "Y10", "Y11", "Y12"]:
             pin = pyb.Pin(pin_name, pyb.Pin.OUT_PP) # set as output
             pin.value(1)  ## set high as default
-# special treat for BG LED
-        self.pin_led = pyb.Pin("Y3", pyb.Pin.OUT_PP)
-        self.pin_led.value(0)  ## switch BG LED off
 # special treat for Reset
         self.pin_reset = pyb.Pin("Y9", pyb.Pin.OUT_PP)
 # Reset the device
@@ -81,14 +84,18 @@ class TFT:
                     # VSYNC,               Set VT 288  VPS 04 VPW 12 FPS 2
             self.tft_cmd_data_AS(0xBA, bytearray(b'\x0f'), 1) # GPIO[3:0] out 1
             self.tft_cmd_data_AS(0xB8, bytearray(b'\x07\x01'), 1) # GPIO3=input, GPIO[2:0]=output
-            self.tft_cmd_data_AS(0x36, bytearray(b'\x20'), 1) # rotation/Mirro, etc.
+            if self.mode == PORTRAIT:
+                self.tft_cmd_data_AS(0x36, bytearray(b'\x01'), 1) # rotation/Mirro, etc., t.b.t. 
+            else:
+                self.tft_cmd_data_AS(0x36, bytearray(b'\x00'), 1) # rotation/Mirro, etc. t.b.t.
             self.tft_cmd_data_AS(0xf0, bytearray(b'\x00'), 1) # Pixel data Interface 8 Bit
 
-            self.tft_cmd_AS(0x29)             # Display on
+            self.tft_cmd(0x29)             # Display on
             self.tft_cmd_data_AS(0xbe, bytearray(b'\x06\xf0\x01\xf0\x00\x00'), 6) 
                     # Set PWM for B/L
             self.tft_cmd_data_AS(0xd0, bytearray(b'\x0d'), 1) # Set DBC: enable, agressive
-            
+        else:
+            return
 #
 # Init done. clear Screen and switch BG LED on
 #
@@ -108,11 +115,11 @@ class TFT:
         self.BGcolorvect = bytearray(self.BGcolor)  # prepare byte array
 #
 # Draw a single pixel at location x, y
-# neve use that for a lot of pixels, because of the set-up overhead
+# Rather slow at 40µs/Pixel
 #        
     def drawPixel(self, x, y):
         self.setXY(x, y, x, y)
-        self.displaySCR_AS(self.colorvect, 1)  # use tft_data instead of setPixel
+        self.displaySCR_AS(self.colorvect, 1)  # 
 #
 # clear screen, set it to BG color.
 #             
@@ -123,6 +130,7 @@ class TFT:
 # Draw a line from x1, y1 to x2, y2 with the color set by setColor()
 # Ported from the UTFT Library
 # 
+    @micropython.native
     def drawLine(self, x1, y1, x2, y2): 
         if y1 == y2:
             self.drawHLine(x1, y1, x2 - x1)
@@ -209,25 +217,47 @@ class TFT:
     def drawBitmap_565(self, x, y, sx, sy, data):
         self.setXY(x, y, x + sx - 1, y + sy - 1)
         self.displaySCR565_AS(data, sx * sy)
+        
+#
+# Print string using the small font
+#
+    def printString(self, x, y, s):
+        size = len(s)
+        bb = bytearray('*' * size * 24)
+        for row in range(12):
+            bp = 0
+            for col in range(size):
+                bitmap = smallfont.SmallFont[((ord(s[col]) & 0x7f) - 0x20) * 12 + row]
+                mask = 0x80
+                for bit in range(8):
+                    if bitmap & mask:
+                        bb[bp:bp+3] = self.colorvect
+                    else:
+                        bb[bp:bp+3] = self.BGcolorvect
+                    bp += 3
+                    mask >>= 1
+            self.drawBitmap(x, y + row, size * 8, 1, bb)
 #
 # Set the addres range for various draw copmmands and set the TFT for expecting data
 #
-    @staticmethod
-    def setXY_fc(x1, y1, x2, y2): ## set the adress range, using function calls
+    def setXY(self, x1, y1, x2, y2): ## set the adress range, using function calls
+        if self.mode == PORTRAIT:
 # set column address
-        TFT.tft_cmd_data_AS(0x2a, bytearray([x1 >> 8, x1 & 0xff, x2 >> 8, x2 & 0xff]), 4)
+            self.setXY_sub(0x2b, x1, x2)
 # set row address            
-        TFT.tft_cmd_datq_AS(0x2b, bytearray([y1 >> 8, y1 & 0xff, y2 >> 8, y2 & 0xff]), 4)
-        TFT.tft_cmd_AS(0x2c)
-#
-# Set the address range for various draw commands and set the TFT for expecting data, unrolled, viper
-#
+            self.setXY_sub(0x2a, y1, y2)
+        else:
+# set column address
+            self.setXY_sub(0x2a, x1, x2)
+# set row address            
+            self.setXY_sub(0x2b, y1, y2)
+# sub-function, saving some time
     @staticmethod
     @micropython.viper        
-    def setXY(x1: int, y1:int, x2:int, y2: int):
+    def setXY_sub(cmd: int, x1: int, x2:int):
         gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
         gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
-        gpioa[0] = 0x2a         # X-vector
+        gpioa[0] = cmd         # command
         gpiob[1] = D_C | WR     # set C/D and WR low
         gpiob[0] = D_C | WR     # set C/D and WR high
 
@@ -244,26 +274,6 @@ class TFT:
         gpiob[0] = WR       # set WR high again
 
         gpioa[0] = x2 & 0xff# low byte of x2
-        gpiob[1] = WR       # set WR low. C/D still high
-        gpiob[0] = WR       # set WR high again
-
-        gpioa[0] = 0x2b     # Y-Vector
-        gpiob[1] = D_C | WR # set C/D and WR low
-        gpiob[0] = D_C | WR # set C/D and WR high
-
-        gpioa[0] = y1 >> 8  # high byte of x1
-        gpiob[1] = WR       # set WR low. C/D still high
-        gpiob[0] = WR       # set WR high again
-
-        gpioa[0] = y1 & 0xff# low byte of x1
-        gpiob[1] = WR       # set WR low. C/D still high
-        gpiob[0] = WR       # set WR high again
-
-        gpioa[0] = y2 >> 8  # high byte of x2
-        gpiob[1] = WR       # set WR low. C/D still high
-        gpiob[0] = WR       # set WR high again
-
-        gpioa[0] = y2 & 0xff# low byte of x2
         gpiob[1] = WR       # set WR low. C/D still high
         gpiob[0] = WR       # set WR high again
 
@@ -414,8 +424,8 @@ class TFT:
         movwt(r7, stm.GPIOB)
         add (r7, stm.GPIO_BSRRL)
         b(loopend)
-        label(loopstart)
 
+        label(loopstart)
         ldrb(r2, [r0, 0])  # red   
         strb(r2, [r6, 0])  # Store red
         strb(r5, [r7, 2])  # WR low
@@ -430,8 +440,9 @@ class TFT:
         strb(r2, [r6, 0])  # store blue
         strb(r5, [r7, 2])  # WR low
         strb(r5, [r7, 0])  # WR high
-        
+
         add (r0, 3)  # advance data ptr
+
         label(loopend)
         sub (r1, 1)  # End of loop?
         bpl(loopstart)
@@ -454,6 +465,7 @@ class TFT:
         movwt(r7, stm.GPIOB)
         add (r7, stm.GPIO_BSRRL)
         b(loopend)
+
         label(loopstart)
 
         ldrb(r2, [r0, 0])  # red   
@@ -467,9 +479,9 @@ class TFT:
         mov (r3, 5)        # shift 5 bits up to 
         lsl(r2, r3)
         ldrb(r4, [r0, 1])  # get the next 3 bits
-        mov (r3, 3)       # shift 3 to the right
+        mov (r3, 3)        # shift 3 to the right
         lsr(r4, r3)
-        orr(r2, r4)        # add them to the fistbits
+        orr(r2, r4)        # add them to the first bits
         mov(r3, 0xfc)      # mask off the lower two bits
         and_(r2, r3)
         strb(r2, [r6, 0])  # store green
@@ -484,13 +496,16 @@ class TFT:
         strb(r5, [r7, 0])  # WR high
         
         add (r0, 2)  # advance data ptr
+
         label(loopend)
+
         sub (r1, 1)  # End of loop?
         bpl(loopstart)
 #
 # Send a command and data to the TFT controller
 # cmd is the command byte, data must be a bytearray object with the command payload,
-# int is the size of the data.
+# int is the size of the data
+# For the startup-phase use this function.
 #
     @staticmethod
     @micropython.viper        
@@ -534,8 +549,8 @@ class TFT:
         strb(r4, [r6, 0])  # Store data
         strh(r5, [r7, 2])  # WR low
         strh(r5, [r7, 0])  # WR high
-       
         add (r1, 1)  # advance data ptr
+
         label(loopend)
         sub (r2, 1)  # End of loop?
         bpl(loopstart)
@@ -550,25 +565,6 @@ class TFT:
         gpioa[0] = cmd          # set data on port A
         gpiob[1] = D_C | WR     # set C/D and WR low
         gpiob[0] = D_C | WR     # set C/D and WR high
-#
-# Send a command to the TFT controller, Assembler Version
-#
-    @staticmethod
-    @micropython.asm_thumb
-    def tft_cmd_AS(r0):  # r0: command
-# set up pointers to GPIO
-# r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
-# r7: GPIOB BSSRL register ptr
-        movwt(r6, stm.GPIOA) # target
-        add (r6, stm.GPIO_ODR)
-        movwt(r7, stm.GPIOB)
-        add (r7, stm.GPIO_BSRRL)
-# Emit command byte
-        mov(r5, WR | D_C)
-        strb(r0, [r6, 0])  # set command byte
-        strh(r5, [r7, 2])  # WR and D_C low
-        strh(r5, [r7, 0])  # WR and D_C high
 #
 # Send data to the TFT controller
 # data must be a bytearray object, int is the size of the data.
@@ -615,8 +611,8 @@ class TFT:
         bpl(loopstart)
 #
 # Read data from the TFT controller
-# cmd is the command byte, data must be a bytearray object for the returne data,
-# int is the expected size of the data.
+# cmd is the command byte, data must be a bytearray object for the returned data,
+# int is the expected size of the data. data must match at least that size
 #
     @staticmethod
     @micropython.viper        
@@ -638,17 +634,18 @@ class TFT:
 # Some sample code
 #
 def main():
-    mytft = TFT("SSD1963", PORTRAIT, 480, 272)
+    mytft = TFT("SSD1963", 480, 272)
 
-    b = bytearray([0 for i in range(960)])
-    
+    b = bytearray([0 for i in range(480 * 2)])
+
+    mytft.setColor(255, 255, 255)
+    mytft.setBGColor(0, 0, 0x38)
     start = pyb.millis()
-    mytft.setColor(255,0,0)
-    for i in range(1000):
-        mytft.drawHLine(0, 0, 480)
+    mytft.printString(0, 10, "Hello World, this is a pretty long Text")
+    mytft.printString(0, 20, "-0123456789-abcdefghijklmnopqrstuvwxyz-")
     time = pyb.elapsed_millis(start)
     print("time = ", time)
-        
+    
     while True:
         val = input("next :")
         if val == "q": break
@@ -656,14 +653,11 @@ def main():
 
         start = pyb.millis()
         with open("F0010.raw", "rb") as f:
-            row = 0
-            while True:
+            for row in range(272):
                 n = f.readinto(b)
                 if not n:
                     break
                 mytft.drawBitmap_565(0, row, 480, 1, b)
-                row += 1
         time = pyb.elapsed_millis(start)
-        f.close
         print("time = ", time)
 
