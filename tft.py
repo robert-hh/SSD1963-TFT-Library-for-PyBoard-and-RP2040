@@ -724,16 +724,19 @@ def main():
 
     b = bytearray([0 for i in range(480 * 2)])
 
-    mytft.printString(10, 20, "0123456789", SevenSegNumFont)
+    cnt = 12
+    while cnt >= 0:
+        mytft.printString(10, 20, "{:2}".format(cnt), SevenSegNumFont)
+        cnt -= 1
+        pyb.delay(1000)
     
     mytft.setColor(255, 255, 0)
     mytft.setBGColor(0, 0, 0)
-    text = input("Circle 1")
     start = pyb.millis()
     mytft.drawCircle(100, 100, 90)
     time = pyb.elapsed_millis(start)
     print("time = ", time)
-    text = input("Circle 2")
+    pyb.delay(1000)
     start = pyb.millis()
     mytft.fillCircle(300, 150, 90)
     time = pyb.elapsed_millis(start)
