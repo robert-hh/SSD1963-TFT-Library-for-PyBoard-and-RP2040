@@ -8,8 +8,7 @@
 # Then LED and /CS must be hard tied to Vcc and GND, and /RD is not used.
 #
 import pyb, stm
-import smallfont
-
+from font import *
 
 # define constants
 #
@@ -17,7 +16,9 @@ RESET  = const(1 << 10)  ## Y9
 RD     = const(1 << 11)  ## Y10
 WR     = const(0x01)  ## Y11
 D_C    = const(0x02)  ## Y12
-LED    = const(8 << 1) ## Y3
+
+LED    = const(1 << 8) ## Y3
+POWER  = const(1 << 9) ## Y4
 
 ## CS is not used and must be hard tied to GND
 
@@ -27,6 +28,9 @@ LANDSCAPE = const(1)
 class TFT:
     
     def __init__(self, model = "SSD1963", width = 480, height = 272):
+        self.tft_init(model, width, height)
+    
+    def tft_init(self, model = "SSD1963", width = 480, height = 272):
 #
 # For convenience, define X1..X1 and Y9..Y12 as output port using thy python functions.
 # X1..X8 will be redefind on the fly as Input by accessing the MODER control registers 
@@ -70,7 +74,7 @@ class TFT:
             self.tft_cmd_data(0xe2, bytearray(b'\x23\x02\x54'), 3) # PLL multiplier, set PLL clock to 120M
                                                      # N=0x37 for 6.5M, 0x23 for 10M crystal 
             self.tft_cmd_data(0xe0, bytearray(b'\x01'), 1) # PLL Enable
-            pyb.delay(100)
+            pyb.delay(10)
             self.tft_cmd_data(0xe0, bytearray(b'\x03'), 1)
             pyb.delay(10)
             self.tft_cmd(0x01)                     # software reset
@@ -128,7 +132,7 @@ class TFT:
         self.fillSCR_AS(self.BGcolorvect, (self.disp_x_size + 1) * (self.disp_y_size + 1))
 #
 # Draw a line from x1, y1 to x2, y2 with the color set by setColor()
-# Ported from the UTFT Library
+# Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
     @micropython.native
     def drawLine(self, x1, y1, x2, y2): 
@@ -164,6 +168,7 @@ class TFT:
                         t -= dx
 #
 # Draw a horizontal line with 1 Pixel width, from x,y to x+l, y
+# Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
     def drawHLine(self, x, y, l): # draw horiontal Line
         if l < 0:  # negative length, swap parameters
@@ -173,6 +178,7 @@ class TFT:
         self.fillSCR(self.colorvect, l)
 #
 # Draw a vertical line with 1 Pixel width, from x,y to x, y + 1
+# Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
     def drawVLine(self, x, y, l): # draw horiontal Line
         if l < 0:  # negative length, swap parameters
@@ -182,6 +188,7 @@ class TFT:
         self.fillSCR(self.colorvect, l)
 #
 # Draw rectangle from x1, y1, to x2, y2
+# Straight port from the UTFT Library at Rinky-Dink Electronics
 #
     def drawRectangle(self, x1, y1, x2, y2):
         if x1 > x2:
@@ -194,6 +201,7 @@ class TFT:
         self.drawVLine(x2, y1, y2-y1)
 #
 # Fill rectangle
+# Straight port from the UTFT Library at Rinky-Dink Electronics
 #
     def fillRectangle(self, x1, y1, x2, y2):
         if x1 > x2:
@@ -204,6 +212,7 @@ class TFT:
         self.fillSCR_AS(self.colorvect, (x2 - x1 + 1) * (y2 - y1 + 1))
 #
 # draw a circle at x, y with radius
+# Straight port from the UTFT Library at Rinky-Dink Electronics
 #
     def drawCircle(self, x, y, radius):
     
@@ -236,6 +245,7 @@ class TFT:
             self.drawPixel(x - y1, y - x1)
 #
 # fill a circle at x, y with radius
+# Straight port from the UTFT Library at Rinky-Dink Electronics
 #
     def fillCircle(self, x, y, radius):
     
@@ -262,22 +272,37 @@ class TFT:
         self.displaySCR565_AS(data, sx * sy)
         
 #
-# Print string using the small font
+# Print string s using the small font at location x, y
+# Characters are 8 col x 12 row pixels sized
 #
-    def printString(self, x, y, s):
+    def printString(self, x, y, s, font = None, fgcolor = None, bgcolor = None):
         size = len(s)
-        bb = bytearray(' ' * size * 24)
-        bitmap = bytearray(' ' * size)
-        colorvect = self.colorvect + self.BGcolorvect       
-
-        for row in range(12):
-            bp = 0
+        if fgcolor:
+            if bgcolor:
+                colorvect = bytearray(fgcolor) + bytearry(bgcolor)
+            else: 
+                colorvect = bytearray(fgcolor) + self.BGcolorvect
+        else:
+            colorvect = self.colorvect + self.BGcolorvect       
+        if font == None:
+            font = SmallFont
+        cols = font[0] // 8
+        rows = font[1]
+        offset = font[2]
+        no_of_chars = font[3]
+        buf = bytearray(' ' * (size * 24 * cols))
+        bitmap = bytearray(' ' * (size * cols))
+        for row in range(rows):
+            cp = 0
             for col in range(size):
-                index = ((ord(s[col]) & 0x7f) - 0x20)
-                if index < 0: index = 0
-                bitmap[col] = smallfont.SmallFont[index * 12 + row]
-            self.expandBitmap(bb, bitmap, size, colorvect)
-            self.drawBitmap(x, y + row, size * 8, 1, bb)
+                index = ((ord(s[col]) & 0x7f) - offset)
+                if index < 0 or index >= no_of_chars: 
+                    index = 0
+                for i in range(cols):
+                    bitmap[cp + i] = font[(index * rows + row) * cols + 4 + i]
+                cp += cols
+            self.expandBitmap(buf, bitmap, size * cols, colorvect)
+            self.drawBitmap(x, y + row, size * cols * 8, 1, buf)
 #
 # Print string helper function for expanding the bitmap
 # 
@@ -699,18 +724,16 @@ def main():
 
     b = bytearray([0 for i in range(480 * 2)])
 
-    buf = bytearray("     ")
-    mytft.tft_read_data(0xa1, buf, 5)
-    print (repr(buf)) 
+    mytft.printString(10, 20, "0123456789", SevenSegNumFont)
     
     mytft.setColor(255, 255, 0)
     mytft.setBGColor(0, 0, 0)
-    text = input("Circle1")
+    text = input("Circle 1")
     start = pyb.millis()
     mytft.drawCircle(100, 100, 90)
     time = pyb.elapsed_millis(start)
     print("time = ", time)
-    text = input("Circle2")
+    text = input("Circle 2")
     start = pyb.millis()
     mytft.fillCircle(300, 150, 90)
     time = pyb.elapsed_millis(start)
@@ -730,4 +753,4 @@ def main():
                 mytft.drawBitmap_565(0, row, 480, 1, b)
         time = pyb.elapsed_millis(start)
         print("time = ", time)
-
+    mytft.clrSCR()
