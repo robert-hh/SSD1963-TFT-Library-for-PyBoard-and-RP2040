@@ -1,7 +1,9 @@
-# DO NOT ADD YOUR OWN FONTS TO THIS FILE
-# If you want to use your own fonts you should just drop the font .c file into your sketch folder.
-# ------------------------------------------------------------------------------------------------
-# SmallFont.c
+#
+# Copyright (C) 2010 by Henning Karlsen, Rinky-Dink-Electronics (C-Version, BigFont)
+# Distributed under Creatice Commons License
+# Copyright (c) 2016 Robert Hammelrath (Python Version)
+# Distributed under MIT License
+# SmallFont 
 # Font Size     : 8x12
 # Memory usage  : 1144 bytes
 # # characters  : 95
@@ -103,7 +105,7 @@ b'\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10'\
 b'\x00\x60\x20\x20\x20\x10\x20\x20\x20\x20\x60\x00'\
 b'\x40\xA4\x18\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
-# BigFont.c (C)2010 by Henning Karlsen
+# BigFont (C)2010 by Henning Karlsen
 # Font Size     : 16x16
 # Memory usage  : 3044 bytes
 # # characters  : 95
@@ -205,7 +207,7 @@ b'\x00\x00\x01\xC0\x01\xC0\x01\xC0\x01\xC0\x01\xC0\x01\xC0\x01\xC0\x01\xC0\x01\x
 b'\x00\x00\x00\x00\x1F\x80\x01\xC0\x01\xC0\x01\xC0\x00\xE0\x00\x38\x00\x38\x00\xE0\x01\xC0\x01\xC0\x01\xC0\x1F\x80\x00\x00\x00\x00'\
 b'\x00\x00\x00\x00\x1F\x1C\x3B\x9C\x39\xDC\x38\xF8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
-# SevenSegNumFont.c
+# SevenSegNumFont
 # Font Size	: 32x50
 # Memory usage	: 2204 bytes
 # # characters	: 11 (10 + blank)

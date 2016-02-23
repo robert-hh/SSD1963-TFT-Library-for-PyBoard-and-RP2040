@@ -13,7 +13,7 @@ from font import *
 # define constants
 #
 RESET  = const(1 << 10)  ## Y9
-RD     = const(1 << 11)  ## Y10
+RD     = const(1 << 11)  ## Y10 (optional)
 WR     = const(0x01)  ## Y11
 D_C    = const(0x02)  ## Y12
 
@@ -275,7 +275,7 @@ class TFT:
 # Print string s using the small font at location x, y
 # Characters are 8 col x 12 row pixels sized
 #
-    def printString(self, x, y, s, font = None, fgcolor = None, bgcolor = None):
+    def printString(self, x, y, s, font, fgcolor = None, bgcolor = None):
         size = len(s)
         if fgcolor:
             if bgcolor:
@@ -283,15 +283,14 @@ class TFT:
             else: 
                 colorvect = bytearray(fgcolor) + self.BGcolorvect
         else:
-            colorvect = self.colorvect + self.BGcolorvect       
-        if font == None:
-            font = SmallFont
-        cols = font[0] // 8
-        rows = font[1]
-        offset = font[2]
-        no_of_chars = font[3]
-        buf = bytearray(' ' * (size * 24 * cols))
-        bitmap = bytearray(' ' * (size * cols))
+            colorvect = self.colorvect + self.BGcolorvect   
+# reading the font's header info = 4 bytes            
+        cols = (font[0] + 7) // 8 # number of bytes/col
+        rows = font[1]            # Rows 
+        offset = font[2]          # Code of the first chars
+        no_of_chars = font[3]     # Number of chars in font set
+        buf = bytearray(size * 24 * cols)
+        bitmap = bytearray(size * cols)
         for row in range(rows):
             cp = 0
             for col in range(size):
@@ -719,41 +718,36 @@ class TFT:
 #
 # Some sample code
 #
+import os
+def displayfile(mytft, name):
+    with open(name, "rb") as f:
+        b = bytearray(480 * 2)
+        for row in range(272):
+            n = f.readinto(b)
+            if not n:
+                break
+            mytft.drawBitmap_565(0, row, 480, 1, b)
+
+
 def main():
     mytft = TFT("SSD1963", 480, 272)
 
-    b = bytearray([0 for i in range(480 * 2)])
-
-    cnt = 12
+    mytft.printString(10, 20, "Hello World", SmallFont)
+    pyb.delay(2000)
+    mytft.printString(10, 20, "Hello World", BigFont)
+    pyb.delay(2000)
+    mytft.clrSCR()
+    cnt = 10
     while cnt >= 0:
-        mytft.printString(10, 20, "{:2}".format(cnt), SevenSegNumFont)
+        mytft.printString(200, 150, "{:2}".format(cnt), SevenSegNumFont)
         cnt -= 1
         pyb.delay(1000)
     
-    mytft.setColor(255, 255, 0)
-    mytft.setBGColor(0, 0, 0)
-    start = pyb.millis()
-    mytft.drawCircle(100, 100, 90)
-    time = pyb.elapsed_millis(start)
-    print("time = ", time)
-    pyb.delay(1000)
-    start = pyb.millis()
-    mytft.fillCircle(300, 150, 90)
-    time = pyb.elapsed_millis(start)
-    print("time = ", time)
-    
-    while True:
-        val = input("next :")
-        if val == "q": break
-        mytft.clrSCR()
-
-        start = pyb.millis()
-        with open("F0010.raw", "rb") as f:
-            for row in range(272):
-                n = f.readinto(b)
-                if not n:
-                    break
-                mytft.drawBitmap_565(0, row, 480, 1, b)
-        time = pyb.elapsed_millis(start)
-        print("time = ", time)
     mytft.clrSCR()
+    while True:
+        displayfile(mytft, "F0010.raw")
+        pyb.delay(4000)
+                
+        displayfile(mytft, "F0011.raw")
+        pyb.delay(4000)
+

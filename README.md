@@ -19,7 +19,7 @@ CS of the TFT must be tied to GND. A separate supply for the TFT's Vcc should be
 
 At the moment, the code is more a proof of feasibility than a final package. I have a single TFT here, so I cannot test a lot. The actual state is working with a 480x272 TFT in landscape and portrait mode. There is no principal limitation in size and mode. I just have to figure out how to set the TFT's configuration and make a smooth interface for that.
 
-Since the number of port lines on Pyboard is limited, I use the 8 bit interface. With X1 to x8, these are nicely available at a single GPIO port - intentionally, I assume. For speed, the lower level functions are coded as viper or assembler functions. Both variants are supplied. Obviously, the Assembler versions are little bit faster, at the cost of LOC. The total advantage of using assembler may be limited. The assembler functions need 220ns to 260ns to send the three bytes of a display pixel, in contrast to the about 10 µs needed to call this function.
+Since the number of port lines on Pyboard is limited, I use the 8 bit interface. With X1 to x8, these are nicely available at GPIO port A0..A7 in the right order - intentionally, I assume. For speed, the lower level functions are coded as viper or assembler functions. Both variants are supplied. Obviously, the Assembler versions are little bit faster, at the cost of LOC. The total advantage of using assembler may be limited. The assembler functions need 220ns to 260ns to send the three bytes of a display pixel, in contrast to the about 10 µs needed to call this function.
 On the upside of this choice is, that you can supply up to 24 bit of color data, in contrast to the 16 bit when using the 16 bit interface.
 In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 30ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 300 ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 40µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
 
@@ -86,13 +86,13 @@ drawBitmap565(x, y, width, height, data)
       format (the byte with red first). The total size of data must be 
       width * height * 2. No type checking is performed.
       
-printString(x, y, s [, font = None][, fgcolor = None ][, bgcolor = None])
+printString(x, y, s , font [, fgcolor = None ][, bgcolor = None])
     # Print a string s at location x, y using the font given in font.
-      The only choices are SmallFont, BigFont or SevenSegNumFont, with SmallFont 
-      as default. If fgcolor is given, that color is used for the characters. 
-      If bgcolor is given, that color is used for the background. Default are
-      colors set by setColor() and setBGColor(). FGcolor and BGcolor must be
-      triples that can be converted to a bytearray, e.g. tuples, lists or strings.
+      The actual choices are SmallFont, BigFont or SevenSegNumFont. If fgcolor 
+      is given, that color is used for the characters. If bgcolor is given, 
+      that color is used for the background. Default are colors set by 
+      setColor() and setBGColor(). FGcolor and BGcolor must be triples 
+      that can be converted to a bytearray, e.g. tuples, lists or strings.
 
 ----- lower level functions ---
 
@@ -163,9 +163,10 @@ tft_read_data(cmd, data, size)
 
 **Files:**
 - tft.py: Source file with comments.
-- smallfont.py: Bittpattern of a small font, Origin: Rinky-Dink Electronics, Henning Karlsen
+- font.py: Bitpattern of a three fonts, Origin: Rinky-Dink Electronics, Henning Karlsen
+- dummyfont.py: Dummy versions of the three fonts, which just define a single char as placeholder
 - README.md: this one
-- Sample raw bitmap file with 565 encoding (16 bits per Pixel)
+- Sample raw bitmap files with 565 encoding (16 bits per Pixel)
 
 **Short Version History**
 
