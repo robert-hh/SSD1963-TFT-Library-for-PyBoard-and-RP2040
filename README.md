@@ -27,13 +27,12 @@ In total, the speed is reasonable. Clearing the 480x272 display (= filling it wi
 ```
 Create instance:
 
-mytft = TFT(model, width, height)
-    model: String with the controller model. At the moment, "SSD1963" is the only 
+mytft = TFT(controller, orientation, width, height)
+    controller: String with the controller model. At the moment, "SSD1963" is the only 
            one supported
-    width: Width of the LCD in pixels. 
+    orientation: which is LANDSCAPE or PORTAIT
+    width: Width of the LCD in pixels. That must be the longer side of the TFT, e.g. 480 of a 480x272 TFT
     height: Height of the LCD in pixels
-    
-    If width is less than height, PORTRAIT mode is assumed.
 
 Functions:
 setColor(red, green, blue) 
@@ -66,6 +65,12 @@ drawRectangle(x1, y1, x2, y2)
 
 fillRectangle(x1, y1, x2, y2)
     # fill a rectangle from x1, y1, to x2, y2 with the foreground color.
+
+drawCantedRectangle(x1, y1, x2, y2)
+    # draw a rectangle with canted edges from x1, y1, to x2, y2. The width of the line is 1 pixel.
+
+fillCantedRectangle(x1, y1, x2, y2)
+    # fill a rectangle with canted edges from x1, y1, to x2, y2 with the foreground color.
 
 drawCircle(x, y, radius)
     # draw a circle at x, y with radius diameter. The width of the line is 1 pixel.
@@ -166,7 +171,7 @@ tft_read_data(cmd, data, size)
 - font.py: Bitpattern of a three fonts, Origin: Rinky-Dink Electronics, Henning Karlsen
 - dummyfont.py: Dummy versions of the three fonts, which just define a single char as placeholder
 - README.md: this one
-- Sample raw bitmap files with 565 encoding (16 bits per Pixel)
+- *.raw: Sample raw bitmap files with 565 encoding (16 bits per Pixel)
 
 **Short Version History**
 

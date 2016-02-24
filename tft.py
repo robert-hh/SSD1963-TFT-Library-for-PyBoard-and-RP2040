@@ -13,7 +13,7 @@ from font import *
 # define constants
 #
 RESET  = const(1 << 10)  ## Y9
-RD     = const(1 << 11)  ## Y10 (optional)
+RD     = const(1 << 11)  ## Y10
 WR     = const(0x01)  ## Y11
 D_C    = const(0x02)  ## Y12
 
@@ -27,23 +27,20 @@ LANDSCAPE = const(1)
 
 class TFT:
     
-    def __init__(self, model = "SSD1963", width = 480, height = 272):
-        self.tft_init(model, width, height)
+    def __init__(self, controller = "SSD1963", orientation = LANDSCAPE, width = 480, height = 272):
+        self.tft_init(controller, orientation, width, height)
     
-    def tft_init(self, model = "SSD1963", width = 480, height = 272):
+    def tft_init(self, controller = "SSD1963", orientation = LANDSCAPE, width = 480, height = 272):
 #
 # For convenience, define X1..X1 and Y9..Y12 as output port using thy python functions.
 # X1..X8 will be redefind on the fly as Input by accessing the MODER control registers 
 # when needed. Y9 is treate seperately, since it is used for Reset, which is done at python level
 # since it need long delays anyhow, 5 and 15 ms vs. 10 µs.
 #
-        self.model = model
+        self.controller = controller
         self.disp_x_size = width - 1
         self.disp_y_size = height - 1
-        if width < height:
-            self.mode = PORTRAIT
-        else:
-            self.mode = LANDSCAPE
+        self.mode = orientation
         
         self.setColor(255, 255, 255) # set FG color to white as can be.
         self.setBGColor(0, 0, 0)     # set BG to black
@@ -70,7 +67,7 @@ class TFT:
 # This is preliminary for the SSD1963 controller and a specific size. Generalization follows.
 # data taken from the UTFT lib & SSD1963 data sheet
 #
-        if self.model == "SSD1963":           # 1st approach for 480 x 272
+        if controller == "SSD1963":           # 1st approach for 480 x 272
             self.tft_cmd_data(0xe2, bytearray(b'\x23\x02\x54'), 3) # PLL multiplier, set PLL clock to 120M
                                                      # N=0x37 for 6.5M, 0x23 for 10M crystal 
             self.tft_cmd_data(0xe0, bytearray(b'\x01'), 1) # PLL Enable
@@ -79,19 +76,36 @@ class TFT:
             pyb.delay(10)
             self.tft_cmd(0x01)                     # software reset
             pyb.delay(10)
-            self.tft_cmd_data_AS(0xe6, bytearray(b'\x01\x1f\xff'), 3) # PLL setting for PCLK, depends on resolution
-            self.tft_cmd_data_AS(0xb0, bytearray(b'\x20\x00\x01\xdf\x01\x0f\x00'), 7) 
-                    # LCD SPECIFICATION, 479 x 271 =  1df x 10f
-            self.tft_cmd_data_AS(0xb4, bytearray(b'\x02\x13\x00\x08\x2b\x00\x02\x00'), 8) 
-                    # HSYNC,               Set HT 531  HPS 08  HPW 43 LPS 2
-            self.tft_cmd_data_AS(0xb6, bytearray(b'\x01\x20\x00\x04\x0c\x00\x02'), 7) 
-                    # VSYNC,               Set VT 288  VPS 04 VPW 12 FPS 2
+            if width == 480:
+                self.tft_cmd_data_AS(0xe6, bytearray(b'\x01\x1f\xff'), 3) # PLL setting for PCLK, depends on resolution
+                self.tft_cmd_data_AS(0xb0, bytearray(b'\x20\x00\x01\xdf\x01\x0f\x00'), 7) 
+                        # LCD SPECIFICATION, 24 bit color, 479 x 271 =  1df x 10f
+                self.tft_cmd_data_AS(0xb4, bytearray(b'\x02\x13\x00\x08\x2b\x00\x02\x00'), 8) 
+                        # HSYNC,               Set HT 531  HPS 08  HPW 43 LPS 2
+                self.tft_cmd_data_AS(0xb6, bytearray(b'\x01\x20\x00\x04\x0c\x00\x02'), 7) 
+                        # VSYNC,               Set VT 288  VPS 04 VPW 12 FPS 2
+                if self.mode == PORTRAIT:
+                    self.tft_cmd_data_AS(0x36, bytearray(b'\x01'), 1) # rotation/Mirro, etc., t.b.t. 
+                else:
+                    self.tft_cmd_data_AS(0x36, bytearray(b'\x00'), 1) # rotation/Mirro, etc. t.b.t.
+            elif width == 800:
+                self.tft_cmd_data_AS(0xe6, bytearray(b'\x04\x93\xe0'), 3) # PLL setting for PCLK, depends on resolution
+                self.tft_cmd_data_AS(0xb0, bytearray(b'\x00\x00\x03\x1f\x01\xdf\x00'), 7) 
+                        # LCD SPECIFICATION, 18 bit color, 799 x 479 =  31f x 1df
+                self.tft_cmd_data_AS(0xb4, bytearray(b'\x03\xa0\x00\x2e\x30\x00\x0f\x00'), 8) 
+                        # HSYNC,               Set HT 928  HPS 46  HPW 48 LPS 15
+                self.tft_cmd_data_AS(0xb6, bytearray(b'\x02\x0d\x00\x10\x10\x00\x08'), 7) 
+                        # VSYNC,               Set VT 525  VPS 16 VPW 16 FPS 8
+                if self.mode == PORTRAIT:
+                    self.tft_cmd_data_AS(0x36, bytearray(b'\x01'), 1) # rotation/Mirro, etc., t.b.t. 
+                else:
+                    self.tft_cmd_data_AS(0x36, bytearray(b'\x02'), 1) # rotation/Mirro, etc. t.b.t.
+            else:
+                print("Wrong Parameter Width: ", width)
+                return
             self.tft_cmd_data_AS(0xBA, bytearray(b'\x0f'), 1) # GPIO[3:0] out 1
             self.tft_cmd_data_AS(0xB8, bytearray(b'\x07\x01'), 1) # GPIO3=input, GPIO[2:0]=output
-            if self.mode == PORTRAIT:
-                self.tft_cmd_data_AS(0x36, bytearray(b'\x01'), 1) # rotation/Mirro, etc., t.b.t. 
-            else:
-                self.tft_cmd_data_AS(0x36, bytearray(b'\x00'), 1) # rotation/Mirro, etc. t.b.t.
+
             self.tft_cmd_data_AS(0xf0, bytearray(b'\x00'), 1) # Pixel data Interface 8 Bit
 
             self.tft_cmd(0x29)             # Display on
@@ -99,6 +113,7 @@ class TFT:
                     # Set PWM for B/L
             self.tft_cmd_data_AS(0xd0, bytearray(b'\x0d'), 1) # Set DBC: enable, agressive
         else:
+            print("Wrong Parameter model", controller)
             return
 #
 # Init done. clear Screen and switch BG LED on
@@ -175,7 +190,7 @@ class TFT:
             l = -l
             x -= l
         self.setXY(x, y, x + l, y) # set display window
-        self.fillSCR(self.colorvect, l)
+        self.fillSCR_AS(self.colorvect, l)
 #
 # Draw a vertical line with 1 Pixel width, from x,y to x, y + 1
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -185,7 +200,7 @@ class TFT:
             l = -l
             y -= l
         self.setXY(x, y, x, y + l) # set display window
-        self.fillSCR(self.colorvect, l)
+        self.fillSCR_AS(self.colorvect, l)
 #
 # Draw rectangle from x1, y1, to x2, y2
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -210,6 +225,52 @@ class TFT:
             t = y1; y1 = y2; y2 = t
         self.setXY(x1, y1, x2, y2) # set display window
         self.fillSCR_AS(self.colorvect, (x2 - x1 + 1) * (y2 - y1 + 1))
+
+#
+# Draw smooth rectangle from x1, y1, to x2, y2
+# Straight port from the UTFT Library at Rinky-Dink Electronics
+#
+    def drawClippedRectangle(self, x1, y1, x2, y2):
+        if x1 > x2:
+            t = x1; x1 = x2; x2 = t
+        if y1 > y2:
+            t = y1; y1 = y2; y2 = t
+        if (x2-x1) > 4 and (y2-y1) > 4:
+            self.drawPixel(x1 + 2,y1 + 1)
+            self.drawPixel(x1 + 1,y1 + 2)
+            self.drawPixel(x2 - 2,y1 + 1)
+            self.drawPixel(x2 - 1,y1 + 2)
+            self.drawPixel(x1 + 2,y2 - 1)
+            self.drawPixel(x1 + 1,y2 - 2)
+            self.drawPixel(x2 - 2,y2 - 1)
+            self.drawPixel(x2 - 1,y2 - 2)
+            self.drawHLine(x1 + 3, y1, x2 - x1 - 6)
+            self.drawHLine(x1 + 3, y2, x2 - x1 - 6)
+            self.drawVLine(x1, y1 + 3, y2 - y1 - 6)
+            self.drawVLine(x2, y1 + 3, y2 - y1 - 6)
+#
+# Fill smooth rectangle from x1, y1, to x2, y2
+# Straight port from the UTFT Library at Rinky-Dink Electronics
+#
+    def fillClippedRectangle(self, x1, y1, x2, y2):
+        if x1 > x2:
+            t = x1; x1 = x2; x2 = t
+        if y1 > y2:
+            t = y1; y1 = y2; y2 = t
+        if (x2-x1) > 4 and (y2-y1) > 4:
+            for i in range(((y2 - y1) // 2) + 1):
+                if i == 0:
+                    self.drawHLine(x1 + 3, y1 + i, x2 - x1 - 6)
+                    self.drawHLine(x1 + 3, y2 - i, x2 - x1 - 6)
+                elif i == 1:
+                    self.drawHLine(x1 + 2, y1 + i, x2 - x1 - 4)
+                    self.drawHLine(x1 + 2, y2 - i, x2 - x1 - 4)
+                elif i == 2:
+                    self.drawHLine(x1 + 1, y1 + i, x2 - x1 - 2)
+                    self.drawHLine(x1 + 1, y2 - i, x2 - x1 - 2)
+                else:
+                    self.drawHLine(x1, y1 + i, x2 - x1)
+                    self.drawHLine(x1, y2 - i, x2 - x1)
 #
 # draw a circle at x, y with radius
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -441,7 +502,7 @@ class TFT:
             gpiob[1] = WR       # set WR low. C/D still high
             gpiob[0] = WR       # set WR high again
 
-            gpioa[0] = data[ptr + 1] << 3 # set data on port A
+            gpioa[0] = (data[ptr + 1] << 3) # set data on port A
             gpiob[1] = WR       # set WR low. C/D still high
             gpiob[0] = WR       # set WR high again
             ptr += 2
@@ -719,35 +780,63 @@ class TFT:
 # Some sample code
 #
 import os
-def displayfile(mytft, name):
+def displayfile(mytft, name, width, height):
     with open(name, "rb") as f:
-        b = bytearray(480 * 2)
-        for row in range(272):
+        b = bytearray(width * 2)
+        for row in range(height):
             n = f.readinto(b)
             if not n:
                 break
-            mytft.drawBitmap_565(0, row, 480, 1, b)
-
+            mytft.drawBitmap_565(0, row, width, 1, b)
+        mytft.setColor(0, 0, 0)
+        mytft.fillRectangle(0, row, width, height)
+        mytft.setColor(255, 255, 255)
 
 def main():
-    mytft = TFT("SSD1963", 480, 272)
+    width = 480
+    height = 272
+    mytft = TFT("SSD1963", LANDSCAPE, width, height)
 
-    mytft.printString(10, 20, "Hello World", SmallFont)
+    mytft.printString(10, 20, "Hello World", SmallFont, (255,0,0))
     pyb.delay(2000)
-    mytft.printString(10, 20, "Hello World", BigFont)
+    mytft.printString(10, 20, "Hello World", BigFont, (0, 255, 0))
+    pyb.delay(2000)
+    mytft.setColor(255,255,255)
+    mytft.drawClippedRectangle(0, 50, 100, 150)
+    mytft.fillClippedRectangle(200, 50, 300, 150)
     pyb.delay(2000)
     mytft.clrSCR()
     cnt = 10
     while cnt >= 0:
-        mytft.printString(200, 150, "{:2}".format(cnt), SevenSegNumFont)
+        mytft.printString((width // 2) - 32, (height // 2) - 30, "{:2}".format(cnt), SevenSegNumFont)
         cnt -= 1
         pyb.delay(1000)
     
     mytft.clrSCR()
+    buf = bytearray(5000)
+    with open ("logo50.raw", "rb") as f:
+        n = f.readinto(buf)
+    
+    for i in range(10):
+        mytft.clrSCR()
+        start = pyb.millis()        
+        for cnt in range(50):
+            x = pyb.rng() % (width - 51)
+            y = pyb.rng() % (height - 51)
+            mytft.drawBitmap_565(x, y, 50, 50, buf)
+        time = pyb.elapsed_millis(start)
+        print("time 50 icons = ", time)
+        pyb.delay(1000)
     while True:
-        displayfile(mytft, "F0010.raw")
-        pyb.delay(4000)
+        start = pyb.millis()        
+        displayfile(mytft, "F0010.raw", width, height)
+        time = pyb.elapsed_millis(start)
+        print("time Picture = ", time)
+        pyb.delay(6000)
+        start = pyb.millis()        
+        displayfile(mytft, "F0011.raw", width, height)
+        time = pyb.elapsed_millis(start)
+        print("time Picture = ", time)
+        pyb.delay(6000)
                 
-        displayfile(mytft, "F0011.raw")
-        pyb.delay(4000)
 
