@@ -27,14 +27,19 @@ In total, the speed is reasonable. Clearing the 480x272 display (= filling it wi
 ```
 Create instance:
 
-mytft = TFT(controller, orientation, width, height)
+mytft = TFT(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])
     controller: String with the controller model. At the moment, "SSD1963" is the only 
            one supported
-    orientation: which is LANDSCAPE or PORTAIT
-    width: Width of the LCD in pixels. That must be the longer side of the TFT, e.g. 480 of a 480x272 TFT
-    height: Height of the LCD in pixels
+    lct_type: type of LCD. At the moment, "LB04301" (480x272) and "AT070TN92" (800x480) are supported.
+    orientation: which is LANDSCAPE or PORTRAIT
+    flip_vertical: Flip vertical True/False
+    flip_horizontal: Flip horizontal True/False
 
 Functions:
+
+getScreensize():
+    # return a tuple of logical screen width and height
+
 setColor(red, green, blue) 
     # set the foreground color, used by the draw functions, range 0..255 each; 
       the lower bits may be ignored
@@ -155,6 +160,13 @@ tft_read_data(cmd, data, size)
       data a bytearray of size length which will receive the data.
       
 ```
+**Fonts**
+A font is defined a bytes string or byte array with a fixed amount of data per character. The first four bytes define the characteristics:
+Offset 0: Columns - Pixel width of the font
+Offset 1: Rows - Pixel height of the font
+Offset 2: Ordinal number of the first character in the font. Typically this is 0x20 (space)
+Offset 3: Number of character in the font set.
+Each Character is defined by ((Columns + 7) // 8) * rows bytes, row by row. Each Character pixel row must consist of a full number of bytes. For instance 12 columns require 2 bytes per row. If a character is not in the font set, usually the first character of the set is printed.
 
 **To Do**
 - Fiddle out the TFT controller settings about the LCD size, such that there is a robust definition of the mode. The UTFT library seems to implement stuff, that the controller would handle for you.
@@ -163,7 +175,7 @@ tft_read_data(cmd, data, size)
 
 **Things beyond the horizon at the moment**
 - Other text fonts
-- Support the touch interface; but that could already be available somewhere, since it's based on SPI
+- Support the touch interface; but that could already be available somewhere
 - Other Controllers
 
 **Files:**
@@ -175,7 +187,12 @@ tft_read_data(cmd, data, size)
 
 **Short Version History**
 
-**0.1** Initial release with some basic functions, limited to a 480x272 display in landscape mode and PyBoard. More a proof of feasibilty.
+**0.1** 
+Initial release with some basic functions, limited to a 480x272 display in landscape mode and PyBoard. More a proof of feasibilty.
 
-**0.2** Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and fillCircle()
+**0.2** 
+Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and fillCircle()
+
+**0.3** 
+Font widths do not have to be a multiple of 8 any more. Added drawCantedRectangle() and fillCantedrectangle(). Changed the arguments of the constructor to name the controller and lcd type instead of controller and dimensions. The lcd type defines the size, the default orientation and the required initialization code. Provided a dummy font.
 

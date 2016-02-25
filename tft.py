@@ -27,10 +27,10 @@ LANDSCAPE = const(1)
 
 class TFT:
     
-    def __init__(self, controller = "SSD1963", orientation = LANDSCAPE, width = 480, height = 272):
-        self.tft_init(controller, orientation, width, height)
+    def __init__(self, controller = "SSD1963", lcd_type = "LB04301", orientation = LANDSCAPE,  v_flip = False, h_flip = False):
+        self.tft_init(controller, lcd_type, orientation, v_flip, h_flip)
     
-    def tft_init(self, controller = "SSD1963", orientation = LANDSCAPE, width = 480, height = 272):
+    def tft_init(self, controller = "SSD1963", lcd_type = "LB04301", orientation = LANDSCAPE,  v_flip = False, h_flip = False):
 #
 # For convenience, define X1..X1 and Y9..Y12 as output port using thy python functions.
 # X1..X8 will be redefind on the fly as Input by accessing the MODER control registers 
@@ -38,9 +38,8 @@ class TFT:
 # since it need long delays anyhow, 5 and 15 ms vs. 10 µs.
 #
         self.controller = controller
-        self.disp_x_size = width - 1
-        self.disp_y_size = height - 1
-        self.mode = orientation
+        self.lcd_type = lcd_type
+        self.orientation = orientation
         
         self.setColor(255, 255, 255) # set FG color to white as can be.
         self.setBGColor(0, 0, 0)     # set BG to black
@@ -65,43 +64,54 @@ class TFT:
 #
 # Now initialiize the LCD
 # This is preliminary for the SSD1963 controller and a specific size. Generalization follows.
-# data taken from the UTFT lib & SSD1963 data sheet
+# Data taken from the SSD1963 data sheet, SSD1963 Application Note and TFT Data sheet
 #
         if controller == "SSD1963":           # 1st approach for 480 x 272
-            self.tft_cmd_data(0xe2, bytearray(b'\x23\x02\x54'), 3) # PLL multiplier, set PLL clock to 120M
-                                                     # N=0x37 for 6.5M, 0x23 for 10M crystal 
+            self.tft_cmd_data(0xe2, bytearray(b'\x1d\x02\x54'), 3) # PLL multiplier, set PLL clock to 100M
+                                                     # N=0x2D for 6.5MHz, 0x1D for 10MHz crystal 
+                                                     # PLLClock = Crystal * (Mult + 1) / (Div + 1)
+                                                     # The intermediate value must be between 250MHz and 750 MHz
             self.tft_cmd_data(0xe0, bytearray(b'\x01'), 1) # PLL Enable
             pyb.delay(10)
             self.tft_cmd_data(0xe0, bytearray(b'\x03'), 1)
             pyb.delay(10)
             self.tft_cmd(0x01)                     # software reset
             pyb.delay(10)
-            if width == 480:
-                self.tft_cmd_data_AS(0xe6, bytearray(b'\x01\x1f\xff'), 3) # PLL setting for PCLK, depends on resolution
-                self.tft_cmd_data_AS(0xb0, bytearray(b'\x20\x00\x01\xdf\x01\x0f\x00'), 7) 
-                        # LCD SPECIFICATION, 24 bit color, 479 x 271 =  1df x 10f
+            if lcd_type == "LB04301":
+                self.disp_x_size = 479
+                self.disp_y_size = 271
+                self.tft_cmd_data_AS(0xe6, bytearray(b'\x01\x70\xa3'), 3) # PLL setting for PCLK
+                    # (PixelClock * 1048576 / PLLClock) - 1  --> (9MHz * 1048576 / 100MHz) - 1 = 94371 = 0x170a3
+                self.tft_cmd_data_AS(0xb0, bytearray(  # # LCD SPECIFICATION
+                    [0x20,                # 24 Color bits, HSync/VSync low, No Dithering
+                     0x00,                # TFT mode
+                     self.disp_x_size >> 8,  self.disp_x_size & 0xff, # physical Width of TFT
+                     self.disp_y_size >> 8, self.disp_y_size & 0xff, #  pyhsical Height of TFT
+                     0x00]), 7)  # Last byte only required for a serial TFT
                 self.tft_cmd_data_AS(0xb4, bytearray(b'\x02\x13\x00\x08\x2b\x00\x02\x00'), 8) 
                         # HSYNC,               Set HT 531  HPS 08  HPW 43 LPS 2
                 self.tft_cmd_data_AS(0xb6, bytearray(b'\x01\x20\x00\x04\x0c\x00\x02'), 7) 
                         # VSYNC,               Set VT 288  VPS 04 VPW 12 FPS 2
-                if self.mode == PORTRAIT:
-                    self.tft_cmd_data_AS(0x36, bytearray(b'\x01'), 1) # rotation/Mirro, etc., t.b.t. 
-                else:
-                    self.tft_cmd_data_AS(0x36, bytearray(b'\x00'), 1) # rotation/Mirro, etc. t.b.t.
-            elif width == 800:
-                self.tft_cmd_data_AS(0xe6, bytearray(b'\x04\x93\xe0'), 3) # PLL setting for PCLK, depends on resolution
-                self.tft_cmd_data_AS(0xb0, bytearray(b'\x00\x00\x03\x1f\x01\xdf\x00'), 7) 
-                        # LCD SPECIFICATION, 18 bit color, 799 x 479 =  31f x 1df
+                self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) # rotation/ flip, etc., t.b.d. 
+            elif lcd_type == "AT070TN92":
+                self.disp_x_size = 799
+                self.disp_y_size = 479
+##                self.tft_cmd_data_AS(0xe6, bytearray(b'\x04\x66\x65'), 3) # PLL setting for PCLK, depends on resolution
+                self.tft_cmd_data_AS(0xe6, bytearray(b'\x05\x47\xad'), 3) # PLL setting for PCLK
+                    # (PixelClock * 1048576 / PLLClock) - 1  --> (33MHz * 1048576 / 100MHz) - 1 = 346029 = 0x547ad
+                self.tft_cmd_data_AS(0xb0, bytearray(  # # LCD SPECIFICATION
+                    [0x00,                # 18 Color bits, HSync/VSync low, No Dithering
+                     0x00,                # TFT mode
+                     self.disp_x_size >> 8,  self.disp_x_size & 0xff, # physical Width of TFT
+                     self.disp_y_size >> 8, self.disp_y_size & 0xff, #  pyhsical Height of TFT
+                     0x00]), 7)  # Last byte only required for a serial TFT
                 self.tft_cmd_data_AS(0xb4, bytearray(b'\x03\xa0\x00\x2e\x30\x00\x0f\x00'), 8) 
                         # HSYNC,               Set HT 928  HPS 46  HPW 48 LPS 15
                 self.tft_cmd_data_AS(0xb6, bytearray(b'\x02\x0d\x00\x10\x10\x00\x08'), 7) 
                         # VSYNC,               Set VT 525  VPS 16 VPW 16 FPS 8
-                if self.mode == PORTRAIT:
-                    self.tft_cmd_data_AS(0x36, bytearray(b'\x01'), 1) # rotation/Mirro, etc., t.b.t. 
-                else:
-                    self.tft_cmd_data_AS(0x36, bytearray(b'\x02'), 1) # rotation/Mirro, etc. t.b.t.
+                self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) # rotation/ flip, etc., t.b.d. 
             else:
-                print("Wrong Parameter Width: ", width)
+                print("Wrong Parameter lcd_type: ", lcd_type)
                 return
             self.tft_cmd_data_AS(0xBA, bytearray(b'\x0f'), 1) # GPIO[3:0] out 1
             self.tft_cmd_data_AS(0xB8, bytearray(b'\x07\x01'), 1) # GPIO3=input, GPIO[2:0]=output
@@ -113,13 +123,21 @@ class TFT:
                     # Set PWM for B/L
             self.tft_cmd_data_AS(0xd0, bytearray(b'\x0d'), 1) # Set DBC: enable, agressive
         else:
-            print("Wrong Parameter model", controller)
+            print("Wrong Parameter controller: ", controller)
             return
 #
 # Init done. clear Screen and switch BG LED on
 #
         self.clrSCR()           # clear the display
         self.pin_led.value(1)  ## switch BG LED on
+#
+# Return screen dimensions
+#
+    def getScreensize(self):
+        if self.orientation == LANDSCAPE:
+            return (self.disp_x_size + 1, self.disp_y_size + 1)
+        else:
+            return (self.disp_y_size + 1, self.disp_x_size + 1)
 #
 # set the color used for the draw commands
 #            
@@ -345,24 +363,26 @@ class TFT:
                 colorvect = bytearray(fgcolor) + self.BGcolorvect
         else:
             colorvect = self.colorvect + self.BGcolorvect   
-# reading the font's header info = 4 bytes            
-        cols = (font[0] + 7) // 8 # number of bytes/col
+# reading the font's header info = 4 bytes
+        cols = font[0]
+        bytes = (cols + 7) // 8   # number of bytes/col
         rows = font[1]            # Rows 
         offset = font[2]          # Code of the first chars
         no_of_chars = font[3]     # Number of chars in font set
-        buf = bytearray(size * 24 * cols)
-        bitmap = bytearray(size * cols)
+        buf = bytearray(size * cols * 3)
+        bitmap = bytearray(size * bytes)
         for row in range(rows):
             cp = 0
             for col in range(size):
                 index = ((ord(s[col]) & 0x7f) - offset)
                 if index < 0 or index >= no_of_chars: 
                     index = 0
-                for i in range(cols):
-                    bitmap[cp + i] = font[(index * rows + row) * cols + 4 + i]
-                cp += cols
-            self.expandBitmap(buf, bitmap, size * cols, colorvect)
-            self.drawBitmap(x, y + row, size * cols * 8, 1, buf)
+                for i in range(bytes):
+                    bitmap[cp + i] = font[(index * rows + row) * bytes + 4 + i]
+                cp += bytes
+            buf[0] = cols
+            self.expandBitmap(buf, bitmap, size * bytes, colorvect)
+            self.drawBitmap(x, y + row, size * cols, 1, buf)
 #
 # Print string helper function for expanding the bitmap
 # 
@@ -370,6 +390,8 @@ class TFT:
     @micropython.viper        
     def expandBitmap(buf: ptr8, bitmap: ptr8, size: int, color: ptr8):
         bp = 0
+        charcols = buf[0]
+        cols = charcols
         for col in range(size):
             bits = bitmap[col]
             for i in range(8):
@@ -383,11 +405,15 @@ class TFT:
                     buf[bp + 2] = color[5]
                 bits <<= 1
                 bp += 3
+                cols -= 1
+                if cols == 0: # Bit cols per char used up, go to next byte
+                    cols = charcols
+                    break
 #
-# Set the addres range for various draw copmmands and set the TFT for expecting data
+# Set the address range for various draw copmmands and set the TFT for expecting data
 #
     def setXY(self, x1, y1, x2, y2): ## set the adress range, using function calls
-        if self.mode == PORTRAIT:
+        if self.orientation == PORTRAIT:
 # set column address
             self.setXY_sub(0x2b, x1, x2)
 # set row address            
@@ -792,14 +818,15 @@ def displayfile(mytft, name, width, height):
         mytft.fillRectangle(0, row, width, height)
         mytft.setColor(255, 255, 255)
 
-def main():
-    width = 480
-    height = 272
-    mytft = TFT("SSD1963", LANDSCAPE, width, height)
+def main(v_flip = False, h_flip = False):
 
+    mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
+    width, height = mytft.getScreensize()
     mytft.printString(10, 20, "Hello World", SmallFont, (255,0,0))
     pyb.delay(2000)
-    mytft.printString(10, 20, "Hello World", BigFont, (0, 255, 0))
+    mytft.printString(10, 20, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", BigFont, (0, 255, 0))
+    mytft.printString(10, 60, "abcdefghijklmnopqrstuvwxyz", BigFont, (0, 255, 0))
+    mytft.printString(10, 100, "0123456789!\"§$%&/()=?", BigFont, (0, 255, 0))
     pyb.delay(2000)
     mytft.setColor(255,255,255)
     mytft.drawClippedRectangle(0, 50, 100, 150)
@@ -819,24 +846,15 @@ def main():
     
     for i in range(10):
         mytft.clrSCR()
-        start = pyb.millis()        
         for cnt in range(50):
             x = pyb.rng() % (width - 51)
             y = pyb.rng() % (height - 51)
             mytft.drawBitmap_565(x, y, 50, 50, buf)
-        time = pyb.elapsed_millis(start)
-        print("time 50 icons = ", time)
         pyb.delay(1000)
     while True:
-        start = pyb.millis()        
         displayfile(mytft, "F0010.raw", width, height)
-        time = pyb.elapsed_millis(start)
-        print("time Picture = ", time)
         pyb.delay(6000)
-        start = pyb.millis()        
         displayfile(mytft, "F0011.raw", width, height)
-        time = pyb.elapsed_millis(start)
-        print("time Picture = ", time)
         pyb.delay(6000)
                 
 
