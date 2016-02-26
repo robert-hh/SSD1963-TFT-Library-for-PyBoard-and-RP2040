@@ -43,7 +43,6 @@ class TFT:
         
         self.setColor(255, 255, 255) # set FG color to white as can be.
         self.setBGColor(0, 0, 0)     # set BG to black
-        
 # special treat for BG LED
         self.pin_led = pyb.Pin("Y3", pyb.Pin.OUT_PP)
         self.pin_led.value(0)  ## switch BG LED off
@@ -63,53 +62,131 @@ class TFT:
         pyb.delay(20)
 #
 # Now initialiize the LCD
-# This is preliminary for the SSD1963 controller and a specific size. Generalization follows.
-# Data taken from the SSD1963 data sheet, SSD1963 Application Note and TFT Data sheet
+# This is for the SSD1963 controller and two specific LCDs. More may follow.
+# Data taken from the SSD1963 data sheet, SSD1963 Application Note and the LCD Data sheets
 #
         if controller == "SSD1963":           # 1st approach for 480 x 272
             self.tft_cmd_data(0xe2, bytearray(b'\x1d\x02\x54'), 3) # PLL multiplier, set PLL clock to 100M
-                                                     # N=0x2D for 6.5MHz, 0x1D for 10MHz crystal 
-                                                     # PLLClock = Crystal * (Mult + 1) / (Div + 1)
-                                                     # The intermediate value must be between 250MHz and 750 MHz
+              # N=0x2D for 6.5MHz, 0x1D for 10MHz crystal 
+              # PLLClock = Crystal * (Mult + 1) / (Div + 1)
+              # The intermediate value Crystal * (Mult + 1) must be between 250MHz and 750 MHz
             self.tft_cmd_data(0xe0, bytearray(b'\x01'), 1) # PLL Enable
             pyb.delay(10)
             self.tft_cmd_data(0xe0, bytearray(b'\x03'), 1)
             pyb.delay(10)
             self.tft_cmd(0x01)                     # software reset
             pyb.delay(10)
-            if lcd_type == "LB04301":
+#
+# Settings for the LCD
+# 
+# The LCDC_FPR depends on PLL clock and the reccomended LCD Dot clock DCLK
+#
+# LCDC_FPR = (DCLK * 1048576 / PLLClock) - 1 
+# 
+# The other settings are less obvious, since the definitions of the SSD1963 data sheet and the 
+# LCD data sheets differ. So what' common, even if the names may differ:
+# HDP  Horizontal Panel width (also called HDISP, Thd). The value store in the register is HDP - 1
+# VDP  Vertical Panel Width (also called VDISP, Tvd). The value stored in the register is VDP - 1
+# HT   Total Horizontal Period, also called HP, th... The exact value does not matter
+# VT   Total Vertical Period, alco called VT, tv, ..  The exact value does not matter
+# HPW  Width of the Horizontal sync pulse, also called HS, thpw. 
+# VPW  Width of the Vertical sync pulse, also called VS, tvpw
+# Front Porch (HFP and VFP) Time between the end of display data and the sync pulse
+# Back Porch (HBP  and VBP Time between the start of the sync pulse and the start of display data.
+#      HT = FP + HDP + BP  and VT = VFP + VDP + VBP (sometimes plus sync pulse width)
+# Unfortunately, the controller does not use these front/back porch times, instead it uses an starting time
+# in the front porch area and defines (see also figures in chapter 13.3 of the SSD1963 data sheet)
+# HPS  Time from that horiz. starting point to the start of the horzontal display area
+# LPS  Time from that horiz. starting point to the horizontal sync pulse
+# VPS  Time from the vert. starting point to the first line
+# FPS  Time from the vert. starting point to the vertical sync pulse
+#
+# So the following relations must be held:
+#
+# HT >  HDP + HPS
+# HPS >= HPW + LPS 
+# HPS = Back Porch - LPS, or HPS = Horizontal back Porch
+# VT > VDP + VPS
+# VPS >= VPW + FPS
+# VPS = Back Porch - FPS, or VPS = Vertical back Porch
+#
+# LPS or FPS may have a value of zero, since the length of the front porch is detemined by the 
+# other figures
+#
+# The best is to start with the recomendations of the lCD data sheet for Back porch, grab a
+# sync pulse with and the determine the other, such that they meet the relations. Typically, these
+# values allow for some ambuigity. 
+# 
+            if lcd_type == "LB04301":  # Size 480 x 272, 16,7M Colors
+                #
+                # Value            Min    Typical   Max
+                # DotClock        5 MHZ    9 MHz    12 MHz
+                # HT (Hor. Total   490     531      612
+                # HDP (Hor. Disp)          480
+                # HBP (back porch)  8      43
+                # HFP (Fr. porch)   2       8
+                # HPW (Hor. sync)   1
+                # VT (Vert. Total) 275     288      335
+                # VDP (Vert. Disp)         272
+                # VBP (back porch)  2       12
+                # VFP (fr. porch)   1       4
+                # VPW (vert. sync)  1       10
+                #
+                # This table in combination with the relation above leads to the settings:
+                # HPS = 43, HPW = 8, LPS = 0, HT = 531
+                # VPS = 14, VPW = 10, FPS = 0, VT = 288
+                #
                 self.disp_x_size = 479
                 self.disp_y_size = 271
                 self.tft_cmd_data_AS(0xe6, bytearray(b'\x01\x70\xa3'), 3) # PLL setting for PCLK
-                    # (PixelClock * 1048576 / PLLClock) - 1  --> (9MHz * 1048576 / 100MHz) - 1 = 94371 = 0x170a3
+                    # (9MHz * 1048576 / 100MHz) - 1 = 94371 = 0x170a3
                 self.tft_cmd_data_AS(0xb0, bytearray(  # # LCD SPECIFICATION
                     [0x20,                # 24 Color bits, HSync/VSync low, No Dithering
                      0x00,                # TFT mode
-                     self.disp_x_size >> 8,  self.disp_x_size & 0xff, # physical Width of TFT
-                     self.disp_y_size >> 8, self.disp_y_size & 0xff, #  pyhsical Height of TFT
+                     self.disp_x_size >> 8, self.disp_x_size & 0xff, # physical Width of TFT
+                     self.disp_y_size >> 8, self.disp_y_size & 0xff, # physical Height of TFT
                      0x00]), 7)  # Last byte only required for a serial TFT
-                self.tft_cmd_data_AS(0xb4, bytearray(b'\x02\x13\x00\x08\x2b\x00\x02\x00'), 8) 
-                        # HSYNC,               Set HT 531  HPS 08  HPW 43 LPS 2
-                self.tft_cmd_data_AS(0xb6, bytearray(b'\x01\x20\x00\x04\x0c\x00\x02'), 7) 
-                        # VSYNC,               Set VT 288  VPS 04 VPW 12 FPS 2
-                self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) # rotation/ flip, etc., t.b.d. 
-            elif lcd_type == "AT070TN92":
+                self.tft_cmd_data_AS(0xb4, bytearray(b'\x02\x13\x00\x2b\x08\x00\x00\x00'), 8) 
+                        # HSYNC,  Set HT 531  HPS 43   HPW=Sync pulse 8 LPS 0
+                self.tft_cmd_data_AS(0xb6, bytearray(b'\x01\x20\x00\x0e\x0a\x00\x00'), 7) 
+                        # VSYNC,  Set VT 288  VPS 14 VPW 10 FPS 0
+                self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) 
+                        # rotation/ flip, etc., t.b.d. 
+            elif lcd_type == "AT070TN92": # Size 800x480, 262144 colors, lower color bits ignored
+                #
+                # Value            Min     Typical   Max
+                # DotClock       26.4 MHz 33.3 MHz  46.8 MHz
+                # HT (Hor. Total   862     1056     1200
+                # HDP (Hor. Disp)          800
+                # HBP (back porch)  46      46       46
+                # HFP (Fr. porch)   16     210      254
+                # HPW (Hor. sync)   1                40
+                # VT (Vert. Total) 510     525      650
+                # VDP (Vert. Disp)         480
+                # VBP (back porch)  23      23       23
+                # VFP (fr. porch)   7       22      147
+                # VPW (vert. sync)  1                20
+                #
+                # This table in combination with the relation above leads to the settings:
+                # HPS = 46, HPW = 8,  LPS = 0, HT = 928
+                # VPS = 23, VPW = 10, VPS = 0, VT = 525
+                #
                 self.disp_x_size = 799
                 self.disp_y_size = 479
-##                self.tft_cmd_data_AS(0xe6, bytearray(b'\x04\x66\x65'), 3) # PLL setting for PCLK, depends on resolution
                 self.tft_cmd_data_AS(0xe6, bytearray(b'\x05\x47\xad'), 3) # PLL setting for PCLK
-                    # (PixelClock * 1048576 / PLLClock) - 1  --> (33MHz * 1048576 / 100MHz) - 1 = 346029 = 0x547ad
+                    # (33MHz * 1048576 / 100MHz) - 1 = 346029 = 0x547ad
                 self.tft_cmd_data_AS(0xb0, bytearray(  # # LCD SPECIFICATION
                     [0x00,                # 18 Color bits, HSync/VSync low, No Dithering
                      0x00,                # TFT mode
-                     self.disp_x_size >> 8,  self.disp_x_size & 0xff, # physical Width of TFT
-                     self.disp_y_size >> 8, self.disp_y_size & 0xff, #  pyhsical Height of TFT
+                     self.disp_x_size >> 8, self.disp_x_size & 0xff, # physical Width of TFT
+                     self.disp_y_size >> 8, self.disp_y_size & 0xff, # physical Height of TFT
                      0x00]), 7)  # Last byte only required for a serial TFT
-                self.tft_cmd_data_AS(0xb4, bytearray(b'\x03\xa0\x00\x2e\x30\x00\x0f\x00'), 8) 
-                        # HSYNC,               Set HT 928  HPS 46  HPW 48 LPS 15
-                self.tft_cmd_data_AS(0xb6, bytearray(b'\x02\x0d\x00\x10\x10\x00\x08'), 7) 
-                        # VSYNC,               Set VT 525  VPS 16 VPW 16 FPS 8
-                self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) # rotation/ flip, etc., t.b.d. 
+                self.tft_cmd_data_AS(0xb4, bytearray(b'\x03\xa0\x00\x2e\x08\x00\x00\x00'), 8) 
+                        # HSYNC,      Set HT 928  HPS 46  HPW 8 LPS 0
+                self.tft_cmd_data_AS(0xb6, bytearray(b'\x02\x0c\x00\x17\x08\x00\x00'), 7) 
+                        # VSYNC,   Set VT 525  VPS 23 VPW 08 FPS 0
+                self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) 
+                        # rotation/ flip, etc., t.b.d. 
             else:
                 print("Wrong Parameter lcd_type: ", lcd_type)
                 return
