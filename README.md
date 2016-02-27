@@ -15,13 +15,14 @@ If you only write to the display, RD (Y10) may be left open. Optionally, the fol
 - X3 for LED
 - X4 for TFT POWER
 
-CS of the TFT must be tied to GND. A separate supply for the TFT's Vcc should be set up, since it may consume more power than the Pyboard can supply. But it is fine to connect the input of the power regulator to PyBoard Vin, unless the TFT sips more than 1A. Then you can supply the whole unit either through USB or an external power supply at Vin and GND. Before using X3 for LED, check the schematics of the display. In the version I have LED is the enable input of the LED power's step-up converter. But the LED input may be as well the LED power input itself, in which case you have to supply the appropriate current & voltage.
+CS of the TFT must be tied to GND. A separate supply for the TFT's Vcc should be set up, since it may consume more power than the Pyboard can supply. But it is fine to connect the input of the power regulator to PyBoard Vin, unless the TFT sips more than 1A. Then you can supply the whole unit either through USB or an external power supply at Vin and GND. Before using X3 for LED, check the schematics of the display. In the version I have LED is the enable input of the LED power's step-up converter. But the LED input may be as well the LED power input itself, in which case you have to supply the appropriate current & voltage. If you do not use X3 for LED, connect LED to the 3.3Vcc of the TFT. 
+LED may also be controlled by one the SSD1963's GPIO's. But that requires resoldering a resistor on the TFT and changing the setting of the SSD1963.
 
-At the moment, the code is more a proof of feasibility than a final package. I have a single TFT here, so I cannot test a lot. The actual state is working with a 480x272 TFT in landscape and portrait mode. There is no principal limitation in size and mode. I just have to figure out how to set the TFT's configuration and make a smooth interface for that.
+At the moment, the code is a basic package. I have a two TFTs here, so I cannot test a lot. The actual state is working with a 480x272 and a 800x480 TFT in landscape and portrait mode. There is no principal limitation in size and mode, as long as the 1215k frame buffer of the SSD1963 fits. I just have to figure out how to set the TFT's configuration and make a smooth interface for that.
 
 Since the number of port lines on Pyboard is limited, I use the 8 bit interface. With X1 to x8, these are nicely available at GPIO port A0..A7 in the right order - intentionally, I assume. For speed, the lower level functions are coded as viper or assembler functions. Both variants are supplied. Obviously, the Assembler versions are little bit faster, at the cost of LOC. The total advantage of using assembler may be limited. The assembler functions need 220ns to 260ns to send the three bytes of a display pixel, in contrast to the about 10 µs needed to call this function.
-On the upside of this choice is, that you can supply up to 24 bit of color data, in contrast to the 16 bit when using the 16 bit interface.
-In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 30ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 300 ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 40µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
+On the upside of this 8 bit interface choice is, that you can supply up to 24 bit of color data, in contrast to the 16 bit when using the 16 bit interface.
+In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 30ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 300 ms, the same for a 800x480 bitmap takes 700ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 40µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
 
 **Functions**
 ```
@@ -29,8 +30,9 @@ Create instance:
 
 mytft = TFT(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])
     controller: String with the controller model. At the moment, "SSD1963" is the only 
-           one supported
-    lct_type: type of LCD. At the moment, "LB04301" (480x272) and "AT070TN92" (800x480) are supported.
+                one supported
+    lct_type: type of LCD. At the moment, "LB04301" (480x272, 4.3") and "AT070TN92" (800x480, 7") 
+              are supported.
     orientation: which is LANDSCAPE or PORTRAIT
     flip_vertical: Flip vertical True/False
     flip_horizontal: Flip horizontal True/False
