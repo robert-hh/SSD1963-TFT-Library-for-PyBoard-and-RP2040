@@ -171,13 +171,12 @@ Offset 3: Number of character in the font set.
 Each Character is defined by ((Columns + 7) // 8) * rows bytes, row by row. Each Character pixel row must consist of a full number of bytes. For instance 12 columns require 2 bytes per row. If a character is not in the font set, usually the first character of the set is printed.
 
 **To Do**
-- Fiddle out the TFT controller settings about the LCD size, such that there is a robust definition of the mode. The UTFT library seems to implement stuff, that the controller would handle for you.
 - Try other display sizes
-- Make a nice interface for BMP type files, such that they can be displayed in a uniform matter.
 
 **Things beyond the horizon at the moment**
 - Other text fonts
 - Support the touch interface; but that could already be available somewhere
+- Some experiments with LCD settings
 - Other Controllers
 
 **Files:**
@@ -196,5 +195,12 @@ Initial release with some basic functions, limited to a 480x272 display in lands
 Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and fillCircle()
 
 **0.3** 
-Font widths do not have to be a multiple of 8 any more. Added drawCantedRectangle() and fillCantedrectangle(). Changed the arguments of the constructor to name the controller and lcd type instead of controller and dimensions. The lcd type defines the size, the default orientation and the required initialization code. Provided a dummy font.
+- Font widths do not have to be a multiple of 8 any more. 
+- Added drawCantedRectangle() and fillCantedrectangle(). 
+- Changed the arguments of the constructor to name the controller and lcd type instead of controller and dimensions. The lcd type defines the size, the default orientation and the required initialization code. 
+- Provided a dummy font.
+
+**0.4** (no real changes to the TFT class)
+- Some explanations on how to determine the LCD settings of the SSD1963 from the LCD data sheet, embedded in the source file.
+- The graphic file conversion for displaying as a RGB data bitmap is nicely done by Gimp, the Swiss Army Knife of graphics. Just export the picture as raw data!
 

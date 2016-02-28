@@ -117,7 +117,7 @@ class TFT:
 # sync pulse with and the determine the other, such that they meet the relations. Typically, these
 # values allow for some ambuigity. 
 # 
-            if lcd_type == "LB04301":  # Size 480 x 272, 16,7M Colors
+            if lcd_type == "LB04301":  # Size 480x272, 4.3", 24 Bit, 4.3"
                 #
                 # Value            Min    Typical   Max
                 # DotClock        5 MHZ    9 MHz    12 MHz
@@ -152,7 +152,7 @@ class TFT:
                         # VSYNC,  Set VT 288  VPS 14 VPW 10 FPS 0
                 self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) 
                         # rotation/ flip, etc., t.b.d. 
-            elif lcd_type == "AT070TN92": # Size 800x480, 262144 colors, lower color bits ignored
+            elif lcd_type == "AT070TN92": # Size 800x480, 7", 18 Bit, lower color bits ignored
                 #
                 # Value            Min     Typical   Max
                 # DotClock       26.4 MHz 33.3 MHz  46.8 MHz
@@ -168,21 +168,21 @@ class TFT:
                 # VPW (vert. sync)  1                20
                 #
                 # This table in combination with the relation above leads to the settings:
-                # HPS = 46, HPW = 8,  LPS = 0, HT = 928
+                # HPS = 46, HPW = 8,  LPS = 0, HT = 1056
                 # VPS = 23, VPW = 10, VPS = 0, VT = 525
                 #
                 self.disp_x_size = 799
                 self.disp_y_size = 479
-                self.tft_cmd_data_AS(0xe6, bytearray(b'\x05\x47\xad'), 3) # PLL setting for PCLK
-                    # (33MHz * 1048576 / 100MHz) - 1 = 346029 = 0x547ad
+                self.tft_cmd_data_AS(0xe6, bytearray(b'\x05\x53\xf6'), 3) # PLL setting for PCLK
+                    # (33.3MHz * 1048576 / 100MHz) - 1 = 349174 = 0x553f6
                 self.tft_cmd_data_AS(0xb0, bytearray(  # # LCD SPECIFICATION
-                    [0x00,                # 18 Color bits, HSync/VSync low, No Dithering
+                    [0x00,                # 18 Color bits, HSync/VSync low, No Dithering/FRC
                      0x00,                # TFT mode
                      self.disp_x_size >> 8, self.disp_x_size & 0xff, # physical Width of TFT
                      self.disp_y_size >> 8, self.disp_y_size & 0xff, # physical Height of TFT
                      0x00]), 7)  # Last byte only required for a serial TFT
-                self.tft_cmd_data_AS(0xb4, bytearray(b'\x03\xa0\x00\x2e\x08\x00\x00\x00'), 8) 
-                        # HSYNC,      Set HT 928  HPS 46  HPW 8 LPS 0
+                self.tft_cmd_data_AS(0xb4, bytearray(b'\x04\x1f\x00\x2e\x08\x00\x00\x00'), 8) 
+                        # HSYNC,      Set HT 1056  HPS 46  HPW 8 LPS 0
                 self.tft_cmd_data_AS(0xb6, bytearray(b'\x02\x0c\x00\x17\x08\x00\x00'), 7) 
                         # VSYNC,   Set VT 525  VPS 23 VPW 08 FPS 0
                 self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) 
@@ -244,7 +244,6 @@ class TFT:
 # Draw a line from x1, y1 to x2, y2 with the color set by setColor()
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
-    @micropython.native
     def drawLine(self, x1, y1, x2, y2): 
         if y1 == y2:
             self.drawHLine(x1, y1, x2 - x1)
@@ -883,14 +882,22 @@ class TFT:
 # Some sample code
 #
 import os
-def displayfile(mytft, name, width, height):
+def displayfile(mytft, name, mode, width, height):
     with open(name, "rb") as f:
-        b = bytearray(width * 2)
-        for row in range(height):
-            n = f.readinto(b)
-            if not n:
-                break
-            mytft.drawBitmap_565(0, row, width, 1, b)
+        if mode == 565:
+            b = bytearray(width * 2)
+            for row in range(height):
+                n = f.readinto(b)
+                if not n:
+                    break
+                mytft.drawBitmap_565(0, row, width, 1, b)
+        else:
+            b = bytearray(width * 3)
+            for row in range(height):
+                n = f.readinto(b)
+                if not n:
+                    break
+                mytft.drawBitmap(0, row, width, 1, b)
         mytft.setColor(0, 0, 0)
         mytft.fillRectangle(0, row, width, height)
         mytft.setColor(255, 255, 255)
@@ -899,15 +906,16 @@ def main(v_flip = False, h_flip = False):
 
     mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
     width, height = mytft.getScreensize()
-    mytft.printString(10, 20, "Hello World", SmallFont, (255,0,0))
+    mytft.printString(10, 20, "0123456789" * 5, SmallFont, (255,0,0))
+    mytft.printString(10, 40, "0123456789" * 5, SmallFont, (255,0,0))
     pyb.delay(2000)
     mytft.printString(10, 20, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", BigFont, (0, 255, 0))
     mytft.printString(10, 60, "abcdefghijklmnopqrstuvwxyz", BigFont, (0, 255, 0))
     mytft.printString(10, 100, "0123456789!\"§$%&/()=?", BigFont, (0, 255, 0))
     pyb.delay(2000)
     mytft.setColor(255,255,255)
-    mytft.drawClippedRectangle(0, 50, 100, 150)
-    mytft.fillClippedRectangle(200, 50, 300, 150)
+    mytft.drawClippedRectangle(0, 150, 100, 250)
+    mytft.fillClippedRectangle(200, 150, 300, 250)
     pyb.delay(2000)
     mytft.clrSCR()
     cnt = 10
@@ -929,9 +937,11 @@ def main(v_flip = False, h_flip = False):
             mytft.drawBitmap_565(x, y, 50, 50, buf)
         pyb.delay(1000)
     while True:
-        displayfile(mytft, "F0010.raw", width, height)
+        displayfile(mytft, "F0010.raw", 565, width, height)
         pyb.delay(6000)
-        displayfile(mytft, "F0011.raw", width, height)
+        displayfile(mytft, "F0011.raw", 565, width, height)
+        pyb.delay(6000)
+        displayfile(mytft, "F0013.data", 24, width, height)
         pyb.delay(6000)
                 
 
