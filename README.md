@@ -98,13 +98,18 @@ drawBitmap565(x, y, width, height, data)
       format (the byte with red first). The total size of data must be 
       width * height * 2. No type checking is performed.
       
-printString(x, y, s , font [, fgcolor = None ][, bgcolor = None])
+printString(x, y, s , font [, transparency = 0][, fgcolor = None ][, bgcolor = None])
     # Print a string s at location x, y using the font given in font.
-      The actual choices are SmallFont, BigFont or SevenSegNumFont. If fgcolor 
-      is given, that color is used for the characters. If bgcolor is given, 
-      that color is used for the background. Default are colors set by 
-      setColor() and setBGColor(). FGcolor and BGcolor must be triples 
-      that can be converted to a bytearray, e.g. tuples, lists or strings.
+      The actual choices are SmallFont, BigFont or SevenSegNumFont. 
+      For transparency the following values are valid:
+        0: no transparency. The BGcolor is used for char. background
+        1: 50% transparency. The previous background is 50% dimmed
+        2: full transparency: The previos bacground is kept.
+      If fgcolor is given, that color is used for the characters.  
+      If bgcolor is given, that color is used for the background for 
+      transparency 0. Default are colors set by setColor() and setBGColor(). 
+      FGcolor and BGcolor must be triples that can be converted to a 
+      bytearray, e.g. tuples, lists or strings.
 
 ----- lower level functions ---
 

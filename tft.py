@@ -430,23 +430,27 @@ class TFT:
 # Print string s using the small font at location x, y
 # Characters are 8 col x 12 row pixels sized
 #
-    def printString(self, x, y, s, font, fgcolor = None, bgcolor = None):
+    def printString(self, x, y, s, font, transparency = 0, fgcolor = None, bgcolor = None):
         size = len(s)
-        if fgcolor:
-            if bgcolor:
-                colorvect = bytearray(fgcolor) + bytearry(bgcolor)
-            else: 
-                colorvect = bytearray(fgcolor) + self.BGcolorvect
-        else:
-            colorvect = self.colorvect + self.BGcolorvect   
 # reading the font's header info = 4 bytes
         cols = font[0]
         bytes = (cols + 7) // 8   # number of bytes/col
         rows = font[1]            # Rows 
         offset = font[2]          # Code of the first chars
         no_of_chars = font[3]     # Number of chars in font set
-        buf = bytearray(size * cols * 3)
+# set data arrays
+        if fgcolor:
+            colorvect = bytearray(font[0:1]) + chr(transparency) + bytearray(fgcolor)
+        else: 
+            colorvect = bytearray(font[0:1]) + chr(transparency) + self.colorvect
+        if bgcolor:
+            colorvect += bytearray(bgcolor)
+        else:
+            colorvect += self.BGcolorvect
+#
+        pix_count = size * cols
         bitmap = bytearray(size * bytes)
+        buf = bytearray(pix_count * 3)
         for row in range(rows):
             cp = 0
             for col in range(size):
@@ -456,9 +460,11 @@ class TFT:
                 for i in range(bytes):
                     bitmap[cp + i] = font[(index * rows + row) * bytes + 4 + i]
                 cp += bytes
-            buf[0] = cols
+            if transparency:   # transparent: read background data back from frame buffer
+                self.setXY(x, y + row, x + pix_count - 1, 1)
+                self.tft_read_cmd_data(0x2e, buf, pix_count * 3)
             self.expandBitmap(buf, bitmap, size * bytes, colorvect)
-            self.drawBitmap(x, y + row, size * cols, 1, buf)
+            self.drawBitmap(x, y + row, pix_count, 1, buf)
 #
 # Print string helper function for expanding the bitmap
 # 
@@ -466,25 +472,30 @@ class TFT:
     @micropython.viper        
     def expandBitmap(buf: ptr8, bitmap: ptr8, size: int, color: ptr8):
         bp = 0
-        charcols = buf[0]
-        cols = charcols
+        cols = color[0]
         for col in range(size):
             bits = bitmap[col]
             for i in range(8):
                 if bits & 0x80:
-                    buf[bp] = color[0]
-                    buf[bp + 1] = color[1]
-                    buf[bp + 2] = color[2]
+                    buf[bp] = color[2]
+                    buf[bp + 1] = color[3]
+                    buf[bp + 2] = color[4]
                 else:
-                    buf[bp] = color[3]
-                    buf[bp + 1] = color[4]
-                    buf[bp + 2] = color[5]
+                    if color[1] == 0: # not transparent
+                        buf[bp] = color[5]
+                        buf[bp + 1] = color[6]
+                        buf[bp + 2] = color[7]
+                    elif color[1] == 1: # Dim background
+                        buf[bp] = buf[bp] >> 1
+                        buf[bp + 1] = buf[bp + 1] >> 1
+                        buf[bp + 2] = buf[bp + 2] >> 1
                 bits <<= 1
                 bp += 3
                 cols -= 1
                 if cols == 0: # Bit cols per char used up, go to next byte
-                    cols = charcols
+                    cols = color[0]
                     break
+#
 #
 # Set the address range for various draw copmmands and set the TFT for expecting data
 #
@@ -820,7 +831,7 @@ class TFT:
 #
     @staticmethod
     @micropython.viper        
-    def tft_data(data: ptr8, size: int):
+    def tft_write_data(data: ptr8, size: int):
         gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
         gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
         for i in range(size):
@@ -834,7 +845,7 @@ class TFT:
 #
     @staticmethod
     @micropython.asm_thumb
-    def tft_data_AS(r0, r1):  # r0: ptr to data, r1: is size in Bytes
+    def tft_write_data_AS(r0, r1):  # r0: ptr to data, r1: is size in Bytes
 # set up pointers to GPIO
 # r5: bit mask for control lines
 # r6: GPIOA OODR register ptr
@@ -858,13 +869,13 @@ class TFT:
         sub (r1, 1)  # End of loop?
         bpl(loopstart)
 #
-# Read data from the TFT controller
+# Send a command and read data from the TFT controller
 # cmd is the command byte, data must be a bytearray object for the returned data,
 # int is the expected size of the data. data must match at least that size
 #
     @staticmethod
     @micropython.viper        
-    def tft_read_data(cmd: int, data: ptr8, size: int):
+    def tft_read_cmd_data(cmd: int, data: ptr8, size: int):
         gpioa = ptr8(stm.GPIOA)
         gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
         gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
@@ -877,7 +888,6 @@ class TFT:
             gpiob[0] = RD       # set RD high again
             data[i] = gpioa[stm.GPIO_IDR]  # get data from port A
         gpioam[0] = 0x5555  # configure X1..X8 as Output
-
 #
 # Some sample code
 #
@@ -906,16 +916,19 @@ def main(v_flip = False, h_flip = False):
 
     mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
     width, height = mytft.getScreensize()
-    mytft.printString(10, 20, "0123456789" * 5, SmallFont, (255,0,0))
-    mytft.printString(10, 40, "0123456789" * 5, SmallFont, (255,0,0))
-    pyb.delay(2000)
-    mytft.printString(10, 20, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", BigFont, (0, 255, 0))
-    mytft.printString(10, 60, "abcdefghijklmnopqrstuvwxyz", BigFont, (0, 255, 0))
-    mytft.printString(10, 100, "0123456789!\"§$%&/()=?", BigFont, (0, 255, 0))
-    pyb.delay(2000)
+    if True:
+        mytft.printString(10, 20, "0123456789" * 5, SmallFont, 0, (255,0,0))
+        mytft.printString(10, 40, "0123456789" * 5, SmallFont, 0, (255,0,0))
+        pyb.delay(2000)
+
+        mytft.printString(10, 20, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", BigFont, 2, (0, 255, 0))
+        mytft.printString(10, 60, "abcdefghijklmnopqrstuvwxyz", BigFont, 0, (0, 255, 0))
+        mytft.printString(10, 100, "0123456789!\"§$%&/()=?", BigFont, 0, (0, 255, 0))
+        pyb.delay(2000)
+
     mytft.setColor(255,255,255)
-    mytft.drawClippedRectangle(0, 150, 100, 250)
     mytft.fillClippedRectangle(200, 150, 300, 250)
+    mytft.drawClippedRectangle(0, 150, 100, 250)
     pyb.delay(2000)
     mytft.clrSCR()
     cnt = 10
@@ -938,10 +951,15 @@ def main(v_flip = False, h_flip = False):
         pyb.delay(1000)
     while True:
         displayfile(mytft, "F0010.raw", 565, width, height)
+        mytft.printString(180, 200,"F0010.raw", BigFont, 2)
         pyb.delay(6000)
         displayfile(mytft, "F0011.raw", 565, width, height)
+        mytft.printString(180, 200,"F0011.raw", BigFont, 2)
         pyb.delay(6000)
-        displayfile(mytft, "F0013.data", 24, width, height)
+        start = pyb.millis()
+        displayfile(mytft, "foto.data", 24, width, height)
+        mytft.printString(180, 200,"foto.raw", BigFont, 1)
+        print ("Time = ", pyb.elapsed_millis(start))
         pyb.delay(6000)
                 
 
