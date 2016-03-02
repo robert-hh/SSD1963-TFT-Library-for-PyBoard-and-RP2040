@@ -42,13 +42,21 @@ Functions:
 getScreensize():
     # return a tuple of logical screen width and height
 
-setColor(red, green, blue) 
-    # set the foreground color, used by the draw functions, range 0..255 each; 
-      the lower bits may be ignored
+setColor(FGcolor) 
+    # set the foreground color, used by the draw functions
+      FGcolor must be a 3-element tuple with the values for red, green and blue.
+      range 0..255 each; the lower bits may be ignored
 
-setBGColor(red, green, blue) 
-    # set the background color, used by clrSCR(), range 0..255 each; 
-      the lower bits may be ignored
+setBGColor(BGcolor) 
+    # set the background color, used by clrSCR()
+      BGcolor must be a 3-element tuple with the values for red, green and blue.
+      range 0..255 each; the lower bits may be ignored
+
+getColor() 
+    # get the foreground color, set by a previous setColor call
+
+getBGColor() 
+    # get the background color, set by a previous setBGColor call
 
 clrSCR()
     # set the total screen to the background color.
@@ -88,15 +96,17 @@ fillCircle(x, y, radius)
 drawBitmap(x, y, width, height, data)
     # draw a bitmap at location x, y dimension width x height. Data must contain 
       the bitmap data and must be of type bytearray or buffer. It must contain 
-      3 bytes per pixel (red, green, blue). The total size of data must be 
-      width * height * 3. No type checking is performed.
+      3 bytes per pixel (red, green, blue), which is for instance used in 24 color-bit 
+      bmp type files. The total size of data must be width * height * 3. 
+      No type checking is performed.
 
 drawBitmap565(x, y, width, height, data)
     # draw a bitmap at location x, y dimension width x height. Data must contain
       the bitmap data and must be of type bytearray or buffer. It must contain 
-      2 bytes per pixel with packed color data (bbbbbggggggrrrrr) in little endian 
-      format (the byte with red first). The total size of data must be 
-      width * height * 2. No type checking is performed.
+      2 bytes per pixel with packed color data (bbbbbggggggrrrrr) in big endian 
+      format (the byte with blue first), which is for instance used in 16 color-bit 
+      bmp type files. The total size of data must be width * height * 2. 
+      No type checking is performed.
       
 printString(x, y, s , font [, transparency = 0][, fgcolor = None ][, bgcolor = None])
     # Print a string s at location x, y using the font given in font.

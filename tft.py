@@ -1,12 +1,40 @@
+# 
+# The MIT License (MIT)
+# 
+# Copyright (c) 2016 Robert Hammelrath
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
 #
 # Class supporting TFT LC-displays with a parallel Interface
 # First example: Controller SSD1963
-# This is more or less a port of the UTFT-Library of Rinky-Dink Electronics
-# to Python/Pyboard
 # It uses X1..X8 for data and Y3, Y9, Y10, Y11 and Y12 for control signals.
 # The minimal connection just for writes is X1..X8 for data, Y9 for /Reset. Y11 for /WR and Y12 for /RS
 # Then LED and /CS must be hard tied to Vcc and GND, and /RD is not used.
 #
+#  Some parts of the software are a port of code provided by Rinky-Dink Electronics, Henning Karlsen,
+#  with the following copyright notice:
+## Copyright (C)2015 Rinky-Dink Electronics, Henning Karlsen. All right reserved
+##  This library is free software; you can redistribute it and/or
+##  modify it under the terms of the CC BY-NC-SA 3.0 license.
+##  Please see the included documents for further information.
+#
+
 import pyb, stm
 from font import *
 
@@ -41,8 +69,8 @@ class TFT:
         self.lcd_type = lcd_type
         self.orientation = orientation
         
-        self.setColor(255, 255, 255) # set FG color to white as can be.
-        self.setBGColor(0, 0, 0)     # set BG to black
+        self.setColor((255, 255, 255)) # set FG color to white as can be.
+        self.setBGColor((0, 0, 0))     # set BG to black
 # special treat for BG LED
         self.pin_led = pyb.Pin("Y3", pyb.Pin.OUT_PP)
         self.pin_led.value(0)  ## switch BG LED off
@@ -218,15 +246,25 @@ class TFT:
 #
 # set the color used for the draw commands
 #            
-    def setColor(self, red, green, blue):
-        self.color = [red, green, blue]
+    def setColor(self, fgcolor):
+        self.color = fgcolor
         self.colorvect = bytearray(self.color)  # prepare byte array
 #
-# set BG color used for 
+# Set BG color used for the draw commands
 # 
-    def setBGColor(self, red, green, blue):
-        self.BGcolor = [red, green, blue]
+    def setBGColor(self, bgcolor):
+        self.BGcolor = bgcolor
         self.BGcolorvect = bytearray(self.BGcolor)  # prepare byte array
+#
+# get the color used for the draw commands
+#            
+    def getColor(self):
+        return self.color
+#
+# get BG color used for 
+# 
+    def getBGColor(self):
+        return self.BGcolor
 #
 # Draw a single pixel at location x, y
 # Rather slow at 40µs/Pixel
@@ -462,7 +500,7 @@ class TFT:
                 cp += bytes
             if transparency:   # transparent: read background data back from frame buffer
                 self.setXY(x, y + row, x + pix_count - 1, 1)
-                self.tft_read_cmd_data(0x2e, buf, pix_count * 3)
+                self.tft_read_cmd_data_AS(0x2e, buf, pix_count * 3)
             self.expandBitmap(buf, bitmap, size * bytes, colorvect)
             self.drawBitmap(x, y + row, pix_count, 1, buf)
 #
@@ -607,15 +645,15 @@ class TFT:
         gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
         ptr = 0
         while size:
-            gpioa[0] = data[ptr] & 0xf8  # set data on port A
+            gpioa[0] = data[ptr + 1] & 0xf8  # set data on port A
             gpiob[1] = WR       # set WR low. C/D still high
             gpiob[0] = WR       # set WR high again
 
-            gpioa[0] = (data[ptr] << 5 | (data[ptr +1] >> 3) & 0xfc) # set data on port A
+            gpioa[0] = (data[ptr + 1] << 5 | (data[ptr] >> 3) & 0xfc) # set data on port A
             gpiob[1] = WR       # set WR low. C/D still high
             gpiob[0] = WR       # set WR high again
 
-            gpioa[0] = (data[ptr + 1] << 3) # set data on port A
+            gpioa[0] = (data[ptr] << 3) # set data on port A
             gpiob[1] = WR       # set WR low. C/D still high
             gpiob[0] = WR       # set WR high again
             ptr += 2
@@ -727,17 +765,17 @@ class TFT:
 
         label(loopstart)
 
-        ldrb(r2, [r0, 0])  # red   
+        ldrb(r2, [r0, 1])  # red   
         mov (r3, 0xf8)     # mask out lower 3 bits
         and_(r2, r3)        
         strb(r2, [r6, 0])  # Store red
         strb(r5, [r7, 2])  # WR low
         strb(r5, [r7, 0])  # WR high
 
-        ldrb(r2, [r0, 0])  # pre green
+        ldrb(r2, [r0, 1])  # pre green
         mov (r3, 5)        # shift 5 bits up to 
         lsl(r2, r3)
-        ldrb(r4, [r0, 1])  # get the next 3 bits
+        ldrb(r4, [r0, 0])  # get the next 3 bits
         mov (r3, 3)        # shift 3 to the right
         lsr(r4, r3)
         orr(r2, r4)        # add them to the first bits
@@ -747,7 +785,7 @@ class TFT:
         strb(r5, [r7, 2])  # WR low
         strb(r5, [r7, 0])  # WR high
         
-        ldrb(r2, [r0, 1])  # blue
+        ldrb(r2, [r0, 0])  # blue
         mov (r3, 3)
         lsl(r2, r3)
         strb(r2, [r6, 0])  # store blue
@@ -869,6 +907,17 @@ class TFT:
         sub (r1, 1)  # End of loop?
         bpl(loopstart)
 #
+# Send a command to the TFT controller
+#
+    @staticmethod
+    @micropython.viper        
+    def tft_cmd(cmd: int):
+        gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
+        gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
+        gpioa[0] = cmd          # set data on port A
+        gpiob[1] = D_C | WR     # set C/D and WR low
+        gpiob[0] = D_C | WR     # set C/D and WR high#
+#
 # Send a command and read data from the TFT controller
 # cmd is the command byte, data must be a bytearray object for the returned data,
 # int is the expected size of the data. data must match at least that size
@@ -889,28 +938,104 @@ class TFT:
             data[i] = gpioa[stm.GPIO_IDR]  # get data from port A
         gpioam[0] = 0x5555  # configure X1..X8 as Output
 #
+# Assembler version of send a command byte and read data from to the TFT controller
+# data must be a bytearray object, int is the size of the data.
+# The speed is about 120 ns/byte
+#
+    @staticmethod
+    @micropython.asm_thumb
+    def tft_read_cmd_data_AS(r0, r1, r2):  
+# r0: command, r1: ptr to data buffer, r2 is expected size in bytes
+# set up pointers to GPIO
+# r5: bit mask for control lines
+# r6: GPIOA OODR register ptr
+# r7: GPIOB BSSRL register ptr
+        movwt(r6, stm.GPIOA) # target
+        movwt(r7, stm.GPIOB)
+        add (r7, stm.GPIO_BSRRL)
+# Emit command byte
+        movw(r5, WR | D_C)
+        strb(r0, [r6, stm.GPIO_ODR])  # set command byte
+        strh(r5, [r7, 2])  # WR and D_C low
+        strh(r5, [r7, 0])  # WR and D_C high
+# now switch gpioaa to input
+        movw(r0, 0)
+        strh(r0, [r6, stm.GPIO_MODER])
+# now loop though data
+        movw(r5, RD)
+        b(loopend)
+
+        label(loopstart)
+        strh(r5, [r7, 2])  # RD low
+        strh(r5, [r7, 0])  # RD high
+        ldrb(r4, [r6, stm.GPIO_IDR])  # load data   
+        strb(r4, [r1, 0])  # Store data
+        add (r1, 1)  # advance data ptr
+
+        label(loopend)
+        sub (r2, 1)  # End of loop?
+        bpl(loopstart)
+# now switch gpioaa back to input
+        movw(r0, 0x5555)
+        strh(r0, [r6, stm.GPIO_MODER])
+#
+# swap byte pairs in a buffer
+# sometimes needed
+#
+    @staticmethod
+    @micropython.asm_thumb
+    def swapbytes(r0, r1):               # bytearray, len(bytearray)
+
+        b(loopend)
+
+        label(loopstart)
+        ldrb(r2, [r0, 0])
+        ldrb(r3, [r0, 1])
+        strb(r3, [r0, 0])
+        strb(r2, [r0, 1])
+        add(r0, 2)
+
+        label(loopend)
+        sub (r1, 2)  # End of loop?
+        bpl(loopstart)
+#
 # Some sample code
 #
+
+
 import os
 def displayfile(mytft, name, mode, width, height):
     with open(name, "rb") as f:
-        if mode == 565:
+        row = 0
+        mytft.setColor((0, 0, 0))
+        if mode == "565":
             b = bytearray(width * 2)
             for row in range(height):
                 n = f.readinto(b)
                 if not n:
                     break
+                mytft.swapbytes(b, n)
                 mytft.drawBitmap_565(0, row, width, 1, b)
-        else:
+            mytft.fillRectangle(0, row, width, height)
+        elif mode == "bmp":
+            b = bytearray(width * 2)
+            f.seek(136) ## should be seek(138), but that does not work
+            for row in range(height - 1, -1, -1):
+                n = f.readinto(b)
+                if not n:
+                    break
+                b[0] = 0; b[1] = 0 # because of the wrong seek, the first pixel has to be deleted
+                mytft.drawBitmap_565(0, row, width, 1, b)
+            mytft.fillRectangle(0, 0, width, row)
+        elif mode == "3x8":
             b = bytearray(width * 3)
             for row in range(height):
                 n = f.readinto(b)
                 if not n:
                     break
                 mytft.drawBitmap(0, row, width, 1, b)
-        mytft.setColor(0, 0, 0)
-        mytft.fillRectangle(0, row, width, height)
-        mytft.setColor(255, 255, 255)
+            mytft.fillRectangle(0, row, width, height)
+        mytft.setColor((255, 255, 255))
 
 def main(v_flip = False, h_flip = False):
 
@@ -926,7 +1051,7 @@ def main(v_flip = False, h_flip = False):
         mytft.printString(10, 100, "0123456789!\"§$%&/()=?", BigFont, 0, (0, 255, 0))
         pyb.delay(2000)
 
-    mytft.setColor(255,255,255)
+    mytft.setColor((255,255,255))
     mytft.fillClippedRectangle(200, 150, 300, 250)
     mytft.drawClippedRectangle(0, 150, 100, 250)
     pyb.delay(2000)
@@ -938,7 +1063,7 @@ def main(v_flip = False, h_flip = False):
         pyb.delay(1000)
     
     mytft.clrSCR()
-    buf = bytearray(5000)
+    buf = bytearray(7500)
     with open ("logo50.raw", "rb") as f:
         n = f.readinto(buf)
     
@@ -947,19 +1072,20 @@ def main(v_flip = False, h_flip = False):
         for cnt in range(50):
             x = pyb.rng() % (width - 51)
             y = pyb.rng() % (height - 51)
-            mytft.drawBitmap_565(x, y, 50, 50, buf)
+            mytft.drawBitmap(x, y, 50, 50, buf)
         pyb.delay(1000)
     while True:
-        displayfile(mytft, "F0010.raw", 565, width, height)
-        mytft.printString(180, 200,"F0010.raw", BigFont, 2)
+        displayfile(mytft, "F0010.raw", "565", width, height)
+        mytft.printString(180, 230,"F0010.raw", BigFont, 2)
         pyb.delay(6000)
-        displayfile(mytft, "F0011.raw", 565, width, height)
-        mytft.printString(180, 200,"F0011.raw", BigFont, 2)
+        displayfile(mytft, "F0011.raw", "565", width, height)
+        mytft.printString(180, 230,"F0011.raw", BigFont, 2)
         pyb.delay(6000)
-        start = pyb.millis()
-        displayfile(mytft, "foto.data", 24, width, height)
-        mytft.printString(180, 200,"foto.raw", BigFont, 1)
-        print ("Time = ", pyb.elapsed_millis(start))
+        displayfile(mytft, "F0012.bmp", "bmp", width, height)
+        mytft.printString(180, 230,"F0012.bmp", BigFont, 1)
+        pyb.delay(6000)
+        displayfile(mytft, "F0013.data", "3x8", width, height)
+        mytft.printString(180, 230,"F0013.data", BigFont, 2)
         pyb.delay(6000)
                 
 
