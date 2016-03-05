@@ -36,7 +36,6 @@
 #
 
 import pyb, stm
-from font import *
 
 # define constants
 #
@@ -74,7 +73,12 @@ class TFT:
 # special treat for BG LED
         self.pin_led = pyb.Pin("Y3", pyb.Pin.OUT_PP)
         self.pin_led.value(0)  ## switch BG LED off
-
+# this may have to be moved to the controller specific section
+        if orientation == PORTRAIT:
+            self.setXY = self.setXY_P
+        else:
+            self.setXY = self.setXY_L
+# ----------        
         for pin_name in ["X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", 
                    "Y10", "Y11", "Y12"]:
             pin = pyb.Pin(pin_name, pyb.Pin.OUT_PP) # set as output
@@ -284,9 +288,9 @@ class TFT:
 # 
     def drawLine(self, x1, y1, x2, y2): 
         if y1 == y2:
-            self.drawHLine(x1, y1, x2 - x1)
+            self.drawHLine(x1, y1, x2 - x1 + 1)
         elif x1 == x2:
-            self.drawVLine(x1, y2, y2 - y1)
+            self.drawVLine(x1, y1, y2 - y1 + 1)
         else:
             dx, xstep  = (x2 - x1, 1) if x2 > x1 else (x1 - x2, -1)
             dy, ystep  = (y2 - y1, 1) if y2 > y1 else (y1 - y2, -1)
@@ -314,24 +318,24 @@ class TFT:
                         row += ystep
                         t -= dx
 #
-# Draw a horizontal line with 1 Pixel width, from x,y to x+l, y
+# Draw a horizontal line with 1 Pixel width, from x,y to x + l - 1, y
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
     def drawHLine(self, x, y, l): # draw horiontal Line
         if l < 0:  # negative length, swap parameters
             l = -l
             x -= l
-        self.setXY(x, y, x + l, y) # set display window
+        self.setXY(x, y, x + l - 1, y) # set display window
         self.fillSCR_AS(self.colorvect, l)
 #
-# Draw a vertical line with 1 Pixel width, from x,y to x, y + 1
+# Draw a vertical line with 1 Pixel width, from x,y to x, y + l - 1
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
     def drawVLine(self, x, y, l): # draw horiontal Line
         if l < 0:  # negative length, swap parameters
             l = -l
             y -= l
-        self.setXY(x, y, x, y + l) # set display window
+        self.setXY(x, y, x, y + l - 1) # set display window
         self.fillSCR_AS(self.colorvect, l)
 #
 # Draw rectangle from x1, y1, to x2, y2
@@ -342,10 +346,10 @@ class TFT:
             t = x1; x1 = x2; x2 = t
         if y1 > y2:
             t = y1; y1 = y2; y2 = t
-    	self.drawHLine(x1, y1, x2-x1)
-        self.drawHLine(x1, y2, x2-x1)
-        self.drawVLine(x1, y1, y2-y1)
-        self.drawVLine(x2, y1, y2-y1)
+    	self.drawHLine(x1, y1, x2 - x1 + 1)
+        self.drawHLine(x1, y2, x2 - x1 + 1)
+        self.drawVLine(x1, y1, y2 - y1 + 1)
+        self.drawVLine(x2, y1, y2 - y1 + 1)
 #
 # Fill rectangle
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -376,10 +380,10 @@ class TFT:
             self.drawPixel(x1 + 1,y2 - 2)
             self.drawPixel(x2 - 2,y2 - 1)
             self.drawPixel(x2 - 1,y2 - 2)
-            self.drawHLine(x1 + 3, y1, x2 - x1 - 6)
-            self.drawHLine(x1 + 3, y2, x2 - x1 - 6)
-            self.drawVLine(x1, y1 + 3, y2 - y1 - 6)
-            self.drawVLine(x2, y1 + 3, y2 - y1 - 6)
+            self.drawHLine(x1 + 3, y1, x2 - x1 - 5)
+            self.drawHLine(x1 + 3, y2, x2 - x1 - 5)
+            self.drawVLine(x1, y1 + 3, y2 - y1 - 5)
+            self.drawVLine(x2, y1 + 3, y2 - y1 - 5)
 #
 # Fill smooth rectangle from x1, y1, to x2, y2
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -392,17 +396,17 @@ class TFT:
         if (x2-x1) > 4 and (y2-y1) > 4:
             for i in range(((y2 - y1) // 2) + 1):
                 if i == 0:
-                    self.drawHLine(x1 + 3, y1 + i, x2 - x1 - 6)
-                    self.drawHLine(x1 + 3, y2 - i, x2 - x1 - 6)
+                    self.drawHLine(x1 + 3, y1 + i, x2 - x1 - 5)
+                    self.drawHLine(x1 + 3, y2 - i, x2 - x1 - 5)
                 elif i == 1:
-                    self.drawHLine(x1 + 2, y1 + i, x2 - x1 - 4)
-                    self.drawHLine(x1 + 2, y2 - i, x2 - x1 - 4)
+                    self.drawHLine(x1 + 2, y1 + i, x2 - x1 - 3)
+                    self.drawHLine(x1 + 2, y2 - i, x2 - x1 - 3)
                 elif i == 2:
-                    self.drawHLine(x1 + 1, y1 + i, x2 - x1 - 2)
-                    self.drawHLine(x1 + 1, y2 - i, x2 - x1 - 2)
+                    self.drawHLine(x1 + 1, y1 + i, x2 - x1 - 1)
+                    self.drawHLine(x1 + 1, y2 - i, x2 - x1 - 1)
                 else:
-                    self.drawHLine(x1, y1 + i, x2 - x1)
-                    self.drawHLine(x1, y2 - i, x2 - x1)
+                    self.drawHLine(x1, y1 + i, x2 - x1 + 1)
+                    self.drawHLine(x1, y2 - i, x2 - x1 + 1)
 #
 # draw a circle at x, y with radius
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -442,11 +446,13 @@ class TFT:
 #
     def fillCircle(self, x, y, radius):
     
-        for y1 in range (-radius, 1): 
-            for x1 in range (-radius, 1):
-                if x1*x1+y1*y1 <= radius*radius: 
-                    self.drawHLine(x + x1, y + y1, 2 * (-x1))
-                    self.drawHLine(x + x1, y - y1, 2 * (-x1))
+        for y1 in range (-(radius * 2), 1): 
+            for x1 in range (-(radius * 2), 1):
+                if x1*x1+y1*y1 <= radius*radius*4: 
+                    x1i = x1//2
+                    y1i = y1//2
+                    self.drawHLine(x + x1i, y + y1i, 2 * (-x1i))
+                    self.drawHLine(x + x1i, y - y1i, 2 * (-x1i))
                     break;
 #
 # Draw a bitmap at x,y with size sx, sy
@@ -463,7 +469,6 @@ class TFT:
     def drawBitmap_565(self, x, y, sx, sy, data):
         self.setXY(x, y, x + sx - 1, y + sy - 1)
         self.displaySCR565_AS(data, sx * sy)
-        
 #
 # Print string s using the small font at location x, y
 # Characters are 8 col x 12 row pixels sized
@@ -534,27 +539,15 @@ class TFT:
                     cols = color[0]
                     break
 #
-#
 # Set the address range for various draw copmmands and set the TFT for expecting data
 #
-    def setXY(self, x1, y1, x2, y2): ## set the adress range, using function calls
-        if self.orientation == PORTRAIT:
-# set column address
-            self.setXY_sub(0x2b, x1, x2)
-# set row address            
-            self.setXY_sub(0x2a, y1, y2)
-        else:
-# set column address
-            self.setXY_sub(0x2a, x1, x2)
-# set row address            
-            self.setXY_sub(0x2b, y1, y2)
-# sub-function, saving some time
     @staticmethod
     @micropython.viper        
-    def setXY_sub(cmd: int, x1: int, x2:int):
+    def setXY_P(x1: int, y1: int, x2: int, y2: int): ## set the adress range, Portrait
+# set column address
         gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
         gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
-        gpioa[0] = cmd         # command
+        gpioa[0] = 0x2b         # command
         gpiob[1] = D_C | WR     # set C/D and WR low
         gpiob[0] = D_C | WR     # set C/D and WR high
 
@@ -571,6 +564,76 @@ class TFT:
         gpiob[0] = WR       # set WR high again
 
         gpioa[0] = x2 & 0xff# low byte of x2
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+# set row address            
+        gpioa[0] = 0x2a         # command
+        gpiob[1] = D_C | WR     # set C/D and WR low
+        gpiob[0] = D_C | WR     # set C/D and WR high
+
+        gpioa[0] = y1 >> 8  # high byte of x1
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = y1 & 0xff# low byte of x1
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = y2 >> 8  # high byte of x2
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = y2 & 0xff# low byte of x2
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = 0x2c         # Start data entry
+        gpiob[1] = D_C | WR     # set C/D and WR low
+        gpiob[0] = D_C | WR     # set C/D and WR high
+
+    @staticmethod
+    @micropython.viper        
+    def setXY_L(x1: int, y1: int, x2: int, y2: int): ## set the adress range, Landscape
+# set column address
+        gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
+        gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
+        gpioa[0] = 0x2a         # command
+        gpiob[1] = D_C | WR     # set C/D and WR low
+        gpiob[0] = D_C | WR     # set C/D and WR high
+
+        gpioa[0] = x1 >> 8  # high byte of x1
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = x1 & 0xff# low byte of x1
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = x2 >> 8  # high byte of x2
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = x2 & 0xff# low byte of x2
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+# set row address            
+        gpioa[0] = 0x2b         # command
+        gpiob[1] = D_C | WR     # set C/D and WR low
+        gpiob[0] = D_C | WR     # set C/D and WR high
+
+        gpioa[0] = y1 >> 8  # high byte of x1
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = y1 & 0xff# low byte of x1
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = y2 >> 8  # high byte of x2
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[0] = y2 & 0xff# low byte of x2
         gpiob[1] = WR       # set WR low. C/D still high
         gpiob[0] = WR       # set WR high again
 
@@ -980,12 +1043,13 @@ class TFT:
         strh(r0, [r6, stm.GPIO_MODER])
 #
 # swap byte pairs in a buffer
-# sometimes needed
+# sometimes needed for picture data
 #
     @staticmethod
     @micropython.asm_thumb
     def swapbytes(r0, r1):               # bytearray, len(bytearray)
-
+        mov(r2, 1)  # divide loop count by 2
+        lsr(r1, r2) # to avoid odd valued counter
         b(loopend)
 
         label(loopstart)
@@ -996,96 +1060,6 @@ class TFT:
         add(r0, 2)
 
         label(loopend)
-        sub (r1, 2)  # End of loop?
+        sub (r1, 1)  # End of loop?
         bpl(loopstart)
-#
-# Some sample code
-#
-
-
-import os
-def displayfile(mytft, name, mode, width, height):
-    with open(name, "rb") as f:
-        row = 0
-        mytft.setColor((0, 0, 0))
-        if mode == "565":
-            b = bytearray(width * 2)
-            for row in range(height):
-                n = f.readinto(b)
-                if not n:
-                    break
-                mytft.swapbytes(b, n)
-                mytft.drawBitmap_565(0, row, width, 1, b)
-            mytft.fillRectangle(0, row, width, height)
-        elif mode == "bmp":
-            b = bytearray(width * 2)
-            f.seek(136) ## should be seek(138), but that does not work
-            for row in range(height - 1, -1, -1):
-                n = f.readinto(b)
-                if not n:
-                    break
-                b[0] = 0; b[1] = 0 # because of the wrong seek, the first pixel has to be deleted
-                mytft.drawBitmap_565(0, row, width, 1, b)
-            mytft.fillRectangle(0, 0, width, row)
-        elif mode == "3x8":
-            b = bytearray(width * 3)
-            for row in range(height):
-                n = f.readinto(b)
-                if not n:
-                    break
-                mytft.drawBitmap(0, row, width, 1, b)
-            mytft.fillRectangle(0, row, width, height)
-        mytft.setColor((255, 255, 255))
-
-def main(v_flip = False, h_flip = False):
-
-    mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
-    width, height = mytft.getScreensize()
-    if True:
-        mytft.printString(10, 20, "0123456789" * 5, SmallFont, 0, (255,0,0))
-        mytft.printString(10, 40, "0123456789" * 5, SmallFont, 0, (255,0,0))
-        pyb.delay(2000)
-
-        mytft.printString(10, 20, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", BigFont, 2, (0, 255, 0))
-        mytft.printString(10, 60, "abcdefghijklmnopqrstuvwxyz", BigFont, 0, (0, 255, 0))
-        mytft.printString(10, 100, "0123456789!\"§$%&/()=?", BigFont, 0, (0, 255, 0))
-        pyb.delay(2000)
-
-    mytft.setColor((255,255,255))
-    mytft.fillClippedRectangle(200, 150, 300, 250)
-    mytft.drawClippedRectangle(0, 150, 100, 250)
-    pyb.delay(2000)
-    mytft.clrSCR()
-    cnt = 10
-    while cnt >= 0:
-        mytft.printString((width // 2) - 32, (height // 2) - 30, "{:2}".format(cnt), SevenSegNumFont)
-        cnt -= 1
-        pyb.delay(1000)
-    
-    mytft.clrSCR()
-    buf = bytearray(7500)
-    with open ("logo50.raw", "rb") as f:
-        n = f.readinto(buf)
-    
-    for i in range(10):
-        mytft.clrSCR()
-        for cnt in range(50):
-            x = pyb.rng() % (width - 51)
-            y = pyb.rng() % (height - 51)
-            mytft.drawBitmap(x, y, 50, 50, buf)
-        pyb.delay(1000)
-    while True:
-        displayfile(mytft, "F0010.raw", "565", width, height)
-        mytft.printString(180, 230,"F0010.raw", BigFont, 2)
-        pyb.delay(6000)
-        displayfile(mytft, "F0011.raw", "565", width, height)
-        mytft.printString(180, 230,"F0011.raw", BigFont, 2)
-        pyb.delay(6000)
-        displayfile(mytft, "F0012.bmp", "bmp", width, height)
-        mytft.printString(180, 230,"F0012.bmp", BigFont, 1)
-        pyb.delay(6000)
-        displayfile(mytft, "F0013.data", "3x8", width, height)
-        mytft.printString(180, 230,"F0013.data", BigFont, 2)
-        pyb.delay(6000)
-                
 

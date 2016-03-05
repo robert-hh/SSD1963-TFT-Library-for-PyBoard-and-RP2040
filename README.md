@@ -22,7 +22,7 @@ At the moment, the code is a basic package. I have a two TFTs here, so I cannot 
 
 Since the number of port lines on Pyboard is limited, I use the 8 bit interface. With X1 to x8, these are nicely available at GPIO port A0..A7 in the right order - intentionally, I assume. For speed, the lower level functions are coded as viper or assembler functions. Both variants are supplied. Obviously, the Assembler versions are little bit faster, at the cost of LOC. The total advantage of using assembler may be limited. The assembler functions need 220ns to 260ns to send the three bytes of a display pixel, in contrast to the about 10 µs needed to call this function.
 On the upside of this 8 bit interface choice is, that you can supply up to 24 bit of color data, in contrast to the 16 bit when using the 16 bit interface.
-In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 30ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 300 ms, the same for a 800x480 bitmap takes 700ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 40µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
+In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 30ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 250 to 350ms, depending on the speed of the SD card, the same for a 800x480 bitmap takes 500 to 700ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 40µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
 
 **Functions**
 ```
@@ -114,8 +114,8 @@ printString(x, y, s , font [, transparency = 0][, fgcolor = None ][, bgcolor = N
       For transparency the following values are valid:
         0: no transparency. The BGcolor is used for char. background
         1: 50% transparency. The previous background is 50% dimmed
-        2: full transparency: The previos bacground is kept.
-      If fgcolor is given, that color is used for the characters.  
+        2: full transparency. The previous bacground is kept.
+      If fgcolor is given, that color is used for the characters.
       If bgcolor is given, that color is used for the background for 
       transparency 0. Default are colors set by setColor() and setBGColor(). 
       FGcolor and BGcolor must be triples that can be converted to a 
@@ -153,7 +153,7 @@ displaySCR565_AS(data, size)
       (=first) byte. The version with the AS suffix uses inline-assembler.
 
 tft_cmd_data(cmd, data, size)
-tft_cmd_data_AS(cmd, data, size)      
+tft_cmd_data_AS(cmd, data, size)
     # Send a command byte and data to the controller. cmd is a single integer
       with the command, data a bytearray of size length with the command payload.  
       The version with the AS suffix uses inline-assembler.
@@ -185,21 +185,22 @@ Offset 2: Ordinal number of the first character in the font. Typically this is 0
 Offset 3: Number of character in the font set.
 Each Character is defined by ((Columns + 7) // 8) * rows bytes, row by row. Each Character pixel row must consist of a full number of bytes. For instance 12 columns require 2 bytes per row. If a character is not in the font set, usually the first character of the set is printed.
 
-**To Do**
-- Try other display sizes
-
-**Things beyond the horizon at the moment**
-- Other text fonts
-- Support the touch interface; but that could already be available somewhere
-- Some experiments with LCD settings
-- Other Controllers
-
 **Files:**
 - tft.py: Source file with comments.
-- font.py: Bitpattern of a three fonts, Origin: Rinky-Dink Electronics, Henning Karlsen
+- tft_test.py: Sample code for running the tft
+- smallfont.py, bigfont.py,sevensegnumfont.py: Three font files. Origin: Rinky-Dink Electronics, Henning Karlsen
 - dummyfont.py: Dummy versions of the three fonts, which just define a single char as placeholder
 - README.md: this one
 - *.raw: Sample raw bitmap files with 565 encoding (16 bits per Pixel)
+
+**To Do**
+- Split the Class in basic functions and advanced ones
+- Some experiments with LCD settings. E.g. a more elegant way to change between Portrait and Landscape mode.
+- Other text fonts
+
+**Things beyond the horizon at the moment**
+- Try other display sizes
+- Other Controllers
 
 **Short Version History**
 
@@ -218,4 +219,10 @@ Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and f
 **0.4** (no real changes to the TFT class)
 - Some explanations on how to determine the LCD settings of the SSD1963 from the LCD data sheet, embedded in the source file.
 - The graphic file conversion for displaying as a RGB data bitmap is nicely done by Gimp, the Swiss Army Knife of graphics. Just export the picture as raw data!
+
+**0.5** Split op files
+- Split up the class files and the font files
+- Some testing and fixing of little bugs
+- Changed the byte order in drawBitmap_565(), displaySCR565 and displaySCR565_AS. Now it is consistent to the bmp 65k color file type.
+
 
