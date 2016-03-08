@@ -248,6 +248,11 @@ class TFT:
         else:
             return (self.disp_y_size + 1, self.disp_x_size + 1)
 #
+# switch backlight on/off
+#            
+    def backlight(self, onoff):
+        self.pin_led.value(onoff)  ## switch BG LED on or off
+#
 # set the color used for the draw commands
 #            
     def setColor(self, fgcolor):
@@ -443,12 +448,15 @@ class TFT:
 #
 # fill a circle at x, y with radius
 # Straight port from the UTFT Library at Rinky-Dink Electronics
+# Instead of caluclating x = sqrt(r*r - y*y), it searches the x
+# for r*r = x*x + x*x
 #
     def fillCircle(self, x, y, radius):
-    
+        r_square = radius * radius * 4
         for y1 in range (-(radius * 2), 1): 
+            y_square = y1 * y1
             for x1 in range (-(radius * 2), 1):
-                if x1*x1+y1*y1 <= radius*radius*4: 
+                if x1*x1+y_square <= r_square: 
                     x1i = x1//2
                     y1i = y1//2
                     self.drawHLine(x + x1i, y + y1i, 2 * (-x1i))
@@ -469,6 +477,13 @@ class TFT:
     def drawBitmap_565(self, x, y, sx, sy, data):
         self.setXY(x, y, x + sx - 1, y + sy - 1)
         self.displaySCR565_AS(data, sx * sy)
+#
+# Draw a bitmap at x,y with size sx, sy
+# The data must contain 3 packed bytes/pixel blue/green/red
+#
+    def drawBitmap_BMP(self, x, y, sx, sy, data):
+        self.setXY(x, y, x + sx - 1, y + sy - 1)
+        self.displaySCR_BMP_AS(data, sx * sy)
 #
 # Print string s using the small font at location x, y
 # Characters are 8 col x 12 row pixels sized
@@ -697,6 +712,32 @@ class TFT:
             size -= 1
 #
 # Display screen by writing size pixels with the data
+# data must contains size triplets of blue, green and red data values
+# The area to be filled has to be set in advance by setXY
+# The speed is about 650 ns/pixel
+#
+    @staticmethod
+    @micropython.viper        
+    def displaySCR_BMP(data: ptr8, size: int):
+        gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
+        gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
+        ptr = 0
+        while size:
+            gpioa[0] = data[ptr + 2]  # set data on port A
+            gpiob[1] = WR       # set WR low. C/D still high
+            gpiob[0] = WR       # set WR high again
+
+            gpioa[0] = data[ptr + 1]  # set data on port A
+            gpiob[1] = WR       # set WR low. C/D still high
+            gpiob[0] = WR       # set WR high again
+
+            gpioa[0] = data[ptr]  # set data on port A
+            gpiob[1] = WR       # set WR low. C/D still high
+            gpiob[0] = WR       # set WR high again
+            ptr += 3
+            size -= 1
+#
+# Display screen by writing size pixels with the data
 # data must contains size packed words of red, green and blue data values
 # The area to be filled has to be set in advance by setXY
 # The speed is about 650 ns/pixel
@@ -859,6 +900,48 @@ class TFT:
 
         label(loopend)
 
+        sub (r1, 1)  # End of loop?
+        bpl(loopstart)
+#
+# Assembler version of:
+# Fill screen by writing size pixels with the data
+# data must contains size triplets of blue, green and red data values
+# The area to be filled has to be set in advance by setXY
+# the speed is 266 ns for a byte triple 
+#
+    @staticmethod
+    @micropython.asm_thumb
+    def displaySCR_BMP_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/pixel)
+# set up pointers to GPIO
+# r5: bit mask for control lines
+# r6: GPIOA OODR register ptr
+# r7: GPIOB BSSRL register ptr
+        mov(r5, WR)
+        movwt(r6, stm.GPIOA) # target
+        add (r6, stm.GPIO_ODR)
+        movwt(r7, stm.GPIOB)
+        add (r7, stm.GPIO_BSRRL)
+        b(loopend)
+
+        label(loopstart)
+        ldrb(r2, [r0, 2])  # red   
+        strb(r2, [r6, 0])  # Store red
+        strb(r5, [r7, 2])  # WR low
+        strb(r5, [r7, 0])  # WR high
+
+        ldrb(r2, [r0, 1])  # pre green
+        strb(r2, [r6, 0])  # store greem
+        strb(r5, [r7, 2])  # WR low
+        strb(r5, [r7, 0])  # WR high
+        
+        ldrb(r2, [r0, 1])  # blue
+        strb(r2, [r6, 0])  # store blue
+        strb(r5, [r7, 2])  # WR low
+        strb(r5, [r7, 0])  # WR high
+
+        add (r0, 3)  # advance data ptr
+
+        label(loopend)
         sub (r1, 1)  # End of loop?
         bpl(loopstart)
 #

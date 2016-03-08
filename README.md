@@ -60,6 +60,9 @@ getBGColor()
 
 clrSCR()
     # set the total screen to the background color.
+    
+backlight(Switch);
+    # Switch the LED backlight on (Switch == True) or off (Switch = False)
 
 drawPixel(x, y)
     # set a pixel at position x, y with the foreground color
@@ -96,11 +99,11 @@ fillCircle(x, y, radius)
 drawBitmap(x, y, width, height, data)
     # draw a bitmap at location x, y dimension width x height. Data must contain 
       the bitmap data and must be of type bytearray or buffer. It must contain 
-      3 bytes per pixel (red, green, blue), which is for instance used in 24 color-bit 
-      bmp type files. The total size of data must be width * height * 3. 
-      No type checking is performed.
+      3 bytes per pixel (red, green, blue), which can for instance created by
+      exporring 24 color-bit raw data files with gimp. The total size of data 
+      must be width * height * 3. No type checking is performed.
 
-drawBitmap565(x, y, width, height, data)
+drawBitmap_565(x, y, width, height, data)
     # draw a bitmap at location x, y dimension width x height. Data must contain
       the bitmap data and must be of type bytearray or buffer. It must contain 
       2 bytes per pixel with packed color data (bbbbbggggggrrrrr) in big endian 
@@ -108,6 +111,13 @@ drawBitmap565(x, y, width, height, data)
       bmp type files. The total size of data must be width * height * 2. 
       No type checking is performed.
       
+drawBitmap_BMP(x, y, width, height, data)
+    # draw a bitmap at location x, y dimension width x height. Data must contain 
+      the bitmap data and must be of type bytearray or buffer. It must contain 
+      3 bytes per pixel (blue, green, red), which is used in 24 color-bit 
+      bmp type files. The total size of data must be width * height * 3. 
+      No type checking is performed.
+
 printString(x, y, s , font [, transparency = 0][, fgcolor = None ][, bgcolor = None])
     # Print a string s at location x, y using the font given in font.
       The actual choices are SmallFont, BigFont or SevenSegNumFont. 
@@ -151,6 +161,13 @@ displaySCR565_AS(data, size)
       of 2 * size length with the 16 bit packed red-green-blue values per pixel.
       The color pattern per word is bbbbbggggggrrrrr, with rrrrr in the lower 
       (=first) byte. The version with the AS suffix uses inline-assembler.
+          
+displaySCR_BMP(data, size)
+displaySCR_BMP_AS(data, size)
+    # fill the region set with setXY() or clrXY() with the pixel values given
+      in data. Size is the number of pixels, data must be a bytearray object
+      of 3 * size length with the 24 bit packed blue-green-red values per pixel.
+      The version with the AS suffix uses inline-assembler.
 
 tft_cmd_data(cmd, data, size)
 tft_cmd_data_AS(cmd, data, size)
