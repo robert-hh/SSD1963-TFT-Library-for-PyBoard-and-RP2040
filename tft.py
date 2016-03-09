@@ -67,6 +67,10 @@ class TFT:
         self.controller = controller
         self.lcd_type = lcd_type
         self.orientation = orientation
+        self.v_flip = v_flip # flip vertical
+        self.h_flip = h_flip # flip horizontal
+        self.c_flip = 0 # flip blue/red
+        self.rc_flip = 0 # flip row/column (does not seem to work)
         
         self.setColor((255, 255, 255)) # set FG color to white as can be.
         self.setBGColor((0, 0, 0))     # set BG to black
@@ -252,6 +256,22 @@ class TFT:
 #            
     def backlight(self, onoff):
         self.pin_led.value(onoff)  ## switch BG LED on or off
+#
+# set the tft flip modes
+#            
+    def set_tft_mode(self, v_flip = False, h_flip = False, c_flip = False, rc_flip = False):
+        self.v_flip = v_flip # flip vertical
+        self.h_flip = h_flip # flip horizontal
+        self.c_flip = c_flip # flip blue/red
+        self.rc_flip = rc_flip # flip row/column (does not seem to work)
+        self.tft_cmd_data_AS(0x36, 
+            bytearray([(self.rc_flip << 5) |(self.c_flip << 3) | (self.h_flip & 1) << 1 | (self.v_flip) & 1]), 1) 
+                        # rotation/ flip, etc., t.b.d. 
+#
+# get the tft flip modes
+#            
+    def get_tft_mode(self):
+        return (self.v_flip, self.h_flip, self.c_flip, self.rc_flip) # flip row/column (does not seem to work)
 #
 # set the color used for the draw commands
 #            
@@ -464,26 +484,17 @@ class TFT:
                     break;
 #
 # Draw a bitmap at x,y with size sx, sy
-# The data must contain 3 bytes/pixel red/green/blue
-# Other versions with packed data for the various BMP formats will follow.
+# mode determines the type of expected data
+# mode = 0: The data must contain 3 bytes/pixel red/green/blue
+# mode = 1: he data must contain 2 packed bytes/pixel blue/green/red in 565 format
+# mode = 2: The data must contain 3 bytes/pixel blue/green/red
 #
-    def drawBitmap(self, x, y, sx, sy, data):
+    def drawBitmap(self, x, y, sx, sy, data, mode = 0):
         self.setXY(x, y, x + sx - 1, y + sy - 1)
-        self.displaySCR_AS(data, sx * sy)
-#
-# Draw a bitmap at x,y with size sx, sy
-# The data must contain 2 packed bytes/pixel red/green/blue
-#
-    def drawBitmap_565(self, x, y, sx, sy, data):
-        self.setXY(x, y, x + sx - 1, y + sy - 1)
-        self.displaySCR565_AS(data, sx * sy)
-#
-# Draw a bitmap at x,y with size sx, sy
-# The data must contain 3 packed bytes/pixel blue/green/red
-#
-    def drawBitmap_BMP(self, x, y, sx, sy, data):
-        self.setXY(x, y, x + sx - 1, y + sy - 1)
-        self.displaySCR_BMP_AS(data, sx * sy)
+        if mode == 0:
+            self.displaySCR_AS(data, sx * sy)
+        else:
+            self.displaySCR565_AS(data, sx * sy)
 #
 # Print string s using the small font at location x, y
 # Characters are 8 col x 12 row pixels sized
@@ -712,32 +723,6 @@ class TFT:
             size -= 1
 #
 # Display screen by writing size pixels with the data
-# data must contains size triplets of blue, green and red data values
-# The area to be filled has to be set in advance by setXY
-# The speed is about 650 ns/pixel
-#
-    @staticmethod
-    @micropython.viper        
-    def displaySCR_BMP(data: ptr8, size: int):
-        gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
-        gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
-        ptr = 0
-        while size:
-            gpioa[0] = data[ptr + 2]  # set data on port A
-            gpiob[1] = WR       # set WR low. C/D still high
-            gpiob[0] = WR       # set WR high again
-
-            gpioa[0] = data[ptr + 1]  # set data on port A
-            gpiob[1] = WR       # set WR low. C/D still high
-            gpiob[0] = WR       # set WR high again
-
-            gpioa[0] = data[ptr]  # set data on port A
-            gpiob[1] = WR       # set WR low. C/D still high
-            gpiob[0] = WR       # set WR high again
-            ptr += 3
-            size -= 1
-#
-# Display screen by writing size pixels with the data
 # data must contains size packed words of red, green and blue data values
 # The area to be filled has to be set in advance by setXY
 # The speed is about 650 ns/pixel
@@ -900,48 +885,6 @@ class TFT:
 
         label(loopend)
 
-        sub (r1, 1)  # End of loop?
-        bpl(loopstart)
-#
-# Assembler version of:
-# Fill screen by writing size pixels with the data
-# data must contains size triplets of blue, green and red data values
-# The area to be filled has to be set in advance by setXY
-# the speed is 266 ns for a byte triple 
-#
-    @staticmethod
-    @micropython.asm_thumb
-    def displaySCR_BMP_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/pixel)
-# set up pointers to GPIO
-# r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
-# r7: GPIOB BSSRL register ptr
-        mov(r5, WR)
-        movwt(r6, stm.GPIOA) # target
-        add (r6, stm.GPIO_ODR)
-        movwt(r7, stm.GPIOB)
-        add (r7, stm.GPIO_BSRRL)
-        b(loopend)
-
-        label(loopstart)
-        ldrb(r2, [r0, 2])  # red   
-        strb(r2, [r6, 0])  # Store red
-        strb(r5, [r7, 2])  # WR low
-        strb(r5, [r7, 0])  # WR high
-
-        ldrb(r2, [r0, 1])  # pre green
-        strb(r2, [r6, 0])  # store greem
-        strb(r5, [r7, 2])  # WR low
-        strb(r5, [r7, 0])  # WR high
-        
-        ldrb(r2, [r0, 1])  # blue
-        strb(r2, [r6, 0])  # store blue
-        strb(r5, [r7, 2])  # WR low
-        strb(r5, [r7, 0])  # WR high
-
-        add (r0, 3)  # advance data ptr
-
-        label(loopend)
         sub (r1, 1)  # End of loop?
         bpl(loopstart)
 #
@@ -1141,6 +1084,27 @@ class TFT:
         strb(r3, [r0, 0])
         strb(r2, [r0, 1])
         add(r0, 2)
+
+        label(loopend)
+        sub (r1, 1)  # End of loop?
+        bpl(loopstart)
+
+#
+# swap colors red/blue in the buffer
+#
+    @staticmethod
+    @micropython.asm_thumb
+    def swapcolors(r0, r1):               # bytearray, len(bytearray)
+        mov(r2, 3)
+        udiv(r1, r1, r2)  # 3 bytes per triple
+        b(loopend)
+
+        label(loopstart)
+        ldrb(r2, [r0, 0])
+        ldrb(r3, [r0, 2])
+        strb(r3, [r0, 0])
+        strb(r2, [r0, 2])
+        add(r0, 3)
 
         label(loopend)
         sub (r1, 1)  # End of loop?

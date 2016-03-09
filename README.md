@@ -96,27 +96,19 @@ drawCircle(x, y, radius)
 fillCircle(x, y, radius)
     # draw a filled circle at x, y with radius diameter.
 
-drawBitmap(x, y, width, height, data)
+drawBitmap(x, y, width, height, data, mode)
     # draw a bitmap at location x, y dimension width x height. Data must contain 
-      the bitmap data and must be of type bytearray or buffer. It must contain 
-      3 bytes per pixel (red, green, blue), which can for instance created by
-      exporring 24 color-bit raw data files with gimp. The total size of data 
-      must be width * height * 3. No type checking is performed.
+      the bitmap data and must be of type bytearray or buffer. Mode tells how
+      the data is arranged:
+      mode = 0 (default): The data must contain 3 bytes per pixel (red, green, blue), 
+          which can for instance created by exporting 24 color-bit raw data files
+          with gimp. The total size of data must be width * height * 3. 
+      mode != 0: The data must contain 2 bytes per pixel with packed color data 
+          (bbbbbggggggrrrrr) in big endian format (the byte with blue first), 
+          which is for instance used in 16 color-bit bmp type files. 
+          The total size of data must be width * height * 2.
+      No type checking of the data is performed.
 
-drawBitmap_565(x, y, width, height, data)
-    # draw a bitmap at location x, y dimension width x height. Data must contain
-      the bitmap data and must be of type bytearray or buffer. It must contain 
-      2 bytes per pixel with packed color data (bbbbbggggggrrrrr) in big endian 
-      format (the byte with blue first), which is for instance used in 16 color-bit 
-      bmp type files. The total size of data must be width * height * 2. 
-      No type checking is performed.
-      
-drawBitmap_BMP(x, y, width, height, data)
-    # draw a bitmap at location x, y dimension width x height. Data must contain 
-      the bitmap data and must be of type bytearray or buffer. It must contain 
-      3 bytes per pixel (blue, green, red), which is used in 24 color-bit 
-      bmp type files. The total size of data must be width * height * 3. 
-      No type checking is performed.
 
 printString(x, y, s , font [, transparency = 0][, fgcolor = None ][, bgcolor = None])
     # Print a string s at location x, y using the font given in font.
