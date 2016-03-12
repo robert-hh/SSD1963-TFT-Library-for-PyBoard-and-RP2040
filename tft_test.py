@@ -2,6 +2,7 @@
 # Some sample code
 #
 import os, gc
+from uctypes import addressof
 from tft import *
 from font import *
 from struct import unpack
@@ -63,9 +64,9 @@ def displayfile(mytft, name, width, height):
                     if margin: ## picure with less than frame
                         mytft.drawHLine(0, row, margin)
                         mytft.drawHLine(imgwidth - 1 + margin, row, margin)
-                    if colors == 16:
+                    if colors == 16: ## 16 bit bmp data
                         mytft.drawBitmap(margin, row, imgwidth - 1, 1, b, 1)
-                    else:
+                    else: ## 24 bit bmp has bgr data
                         mytft.swapcolors(b, n)
                         mytft.drawBitmap(margin, row, imgwidth - 1, 1, b)
                 mytft.fillRectangle(0, 0, width - 1, row)
@@ -84,7 +85,7 @@ def main(v_flip = False, h_flip = False):
     mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
     width, height = mytft.getScreensize()
     mytft.clrSCR()
-    if False:    
+    if True:    
         mytft.printString(10, 20, "0123456789" * 5, SmallFont, 0, (255,0,0))
         mytft.printString(10, 40, "0123456789" * 5, SmallFont, 0, (255,0,0))
         pyb.delay(2000)
@@ -116,10 +117,10 @@ def main(v_flip = False, h_flip = False):
             for cnt in range(50):
                 x = pyb.rng() % (width - 51)
                 y = pyb.rng() % (height - 51)
-                mytft.drawBitmap_565(x, y, 50, 50, buf)
+                mytft.drawBitmap(x, y, 50, 50, buf, 1)
             pyb.delay(1000)
 
-    files = "F0010.raw", "F0011.raw", "F0012.bmp", "F0013.data"
+    files = "F0010.raw", "F0012.bmp", "F0013.data","F0011.raw"
 
     while True:
         name = files[pyb.rng() % len(files)]
