@@ -77,6 +77,10 @@ class TFT:
 # special treat for BG LED
         self.pin_led = pyb.Pin("Y3", pyb.Pin.OUT_PP)
         self.pin_led.value(0)  ## switch BG LED off
+# special treat for Power Pin
+        self.pin_power = pyb.Pin("Y4", pyb.Pin.OUT_PP)
+        self.pin_power.value(1)  ## switch Power on
+        pyb.delay(10)
 # this may have to be moved to the controller specific section
         if orientation == PORTRAIT:
             self.setXY = self.setXY_P
@@ -256,6 +260,11 @@ class TFT:
 #            
     def backlight(self, onoff):
         self.pin_led.value(onoff)  ## switch BG LED on or off
+#
+# switch power on/off
+#            
+    def power(self, onoff):
+        self.pin_power.value(onoff)  ## switch power on or off
 #
 # set the tft flip modes
 #            

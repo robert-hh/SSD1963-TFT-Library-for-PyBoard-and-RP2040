@@ -39,6 +39,12 @@ mytft = TFT(controller, lcd_type, orientation [, flip_vertical = False][, flip_h
 
 Functions:
 
+tft_init(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])
+    # repeat the initialization which was peformed during creation of the instance.
+      This function must be called if the TFT power was switched off, but PyBoard kept on running.
+      tft_init is called by __init__() during the creation of the instance. It includes the call
+      to power(True).
+
 getScreensize():
     # return a tuple of logical screen width and height
 
@@ -63,6 +69,10 @@ clrSCR()
     
 backlight(Switch);
     # Switch the LED backlight on (Switch == True) or off (Switch = False)
+
+power(Switch);
+    # Switch the power of the TFT on (Switch == True) or off (Switch = False)
+      After switching on, the init process has to be repeated
 
 drawPixel(x, y)
     # set a pixel at position x, y with the foreground color
@@ -201,6 +211,7 @@ Each Character is defined by ((Columns + 7) // 8) * rows bytes, row by row. Each
 - dummyfont.py: Dummy versions of the three fonts, which just define a single char as placeholder
 - README.md: this one
 - *.raw: Sample raw bitmap files with 565 encoding (16 bits per Pixel)
+- TFT_Adaper_for_PyBoard*.zip: Three variants of PCB sketches for an adapter PCB, created with KiCad.
 
 **To Do**
 - Split the Class in basic functions and advanced ones
@@ -234,4 +245,8 @@ Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and f
 - Some testing and fixing of little bugs
 - Changed the byte order in drawBitmap_565(), displaySCR565 and displaySCR565_AS. Now it is consistent to the bmp 65k color file type.
 
-
+**0.6**
+- added two functions to switch BG LED and power on/off, just to encapsulate these.
+- added two vatriants of the PCB sketches. The 3rd variant uses a pair of transitors to switch the power
+on and off, instead of the special power regulator which seems hard to get.
+- moved the connection to the touchpad, such that UART1 and SPI2 stay available.
