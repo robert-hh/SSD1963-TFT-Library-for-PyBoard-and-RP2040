@@ -49,8 +49,8 @@ POWER  = const(1 << 9) ## Y4
 
 ## CS is not used and must be hard tied to GND
 
-PORTRAIT = const(0)
-LANDSCAPE = const(1)
+PORTRAIT = const(1)
+LANDSCAPE = const(0)
 
 class TFT:
     
@@ -190,7 +190,7 @@ class TFT:
                         # HSYNC,  Set HT 531  HPS 43   HPW=Sync pulse 8 LPS 0
                 self.tft_cmd_data_AS(0xb6, bytearray(b'\x01\x20\x00\x0e\x0a\x00\x00'), 7) 
                         # VSYNC,  Set VT 288  VPS 14 VPW 10 FPS 0
-                self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) 
+                self.tft_cmd_data_AS(0x36, bytearray([(orientation & 1) << 5 | (h_flip & 1) << 1 | (v_flip) & 1]), 1) 
                         # rotation/ flip, etc., t.b.d. 
             elif lcd_type == "AT070TN92": # Size 800x480, 7", 18 Bit, lower color bits ignored
                 #
@@ -225,7 +225,7 @@ class TFT:
                         # HSYNC,      Set HT 1056  HPS 46  HPW 8 LPS 0
                 self.tft_cmd_data_AS(0xb6, bytearray(b'\x02\x0c\x00\x17\x08\x00\x00'), 7) 
                         # VSYNC,   Set VT 525  VPS 23 VPW 08 FPS 0
-                self.tft_cmd_data_AS(0x36, bytearray([(h_flip & 1) << 1 | (v_flip) & 1]), 1) 
+                self.tft_cmd_data_AS(0x36, bytearray([(orientation & 1) << 5 | (h_flip & 1) << 1 | (v_flip) & 1]), 1) 
                         # rotation/ flip, etc., t.b.d. 
             else:
                 print("Wrong Parameter lcd_type: ", lcd_type)
@@ -246,7 +246,7 @@ class TFT:
 # Init done. clear Screen and switch BG LED on
 #
         self.clrSCR()           # clear the display
-        self.pin_led.value(1)  ## switch BG LED on
+#        self.pin_led.value(1)  ## switch BG LED on
 #
 # Return screen dimensions
 #
@@ -264,7 +264,11 @@ class TFT:
 # switch power on/off
 #            
     def power(self, onoff):
-        self.pin_power.value(onoff)  ## switch power on or off
+        if onoff:
+            self.pin_power.value(True)  ## switch power on or off
+        else:
+            self.pin_power.value(False)
+
 #
 # set the tft flip modes
 #            
@@ -679,7 +683,10 @@ class TFT:
 # reset the address range to fullscreen
 #       
     def clrXY(self):
-        self.setXY(0, 0, self.disp_x_size, self.disp_y_size)
+        if self.orientation == LANDSCAPE:
+            self.setXY(0, 0, self.disp_x_size, self.disp_y_size)
+        else:
+            self.setXY(0, 0, self.disp_y_size, self.disp_x_size)
 #
 # Fill screen by writing size pixels with the color given in data
 # data must be 3 bytes of red, green, blue
