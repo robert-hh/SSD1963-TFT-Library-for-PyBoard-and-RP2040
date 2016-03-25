@@ -272,19 +272,19 @@ class TFT:
 #
 # set the tft flip modes
 #            
-    def set_tft_mode(self, v_flip = False, h_flip = False, c_flip = False, rc_flip = False):
+    def set_tft_mode(self, v_flip = False, h_flip = False, c_flip = False, orientation = LANDSCAPE):
         self.v_flip = v_flip # flip vertical
         self.h_flip = h_flip # flip horizontal
         self.c_flip = c_flip # flip blue/red
-        self.rc_flip = rc_flip # flip row/column (does not seem to work)
+        self.orientation = orientation # LANDSCAPE/PORTRAIT
         self.tft_cmd_data_AS(0x36, 
-            bytearray([(self.rc_flip << 5) |(self.c_flip << 3) | (self.h_flip & 1) << 1 | (self.v_flip) & 1]), 1) 
+            bytearray([(self.orientation << 5) |(self.c_flip << 3) | (self.h_flip & 1) << 1 | (self.v_flip) & 1]), 1) 
                         # rotation/ flip, etc., t.b.d. 
 #
 # get the tft flip modes
 #            
     def get_tft_mode(self):
-        return (self.v_flip, self.h_flip, self.c_flip, self.rc_flip) # flip row/column (does not seem to work)
+        return (self.v_flip, self.h_flip, self.c_flip, self.orientation) # 
 #
 # set the color used for the draw commands
 #            
@@ -499,15 +499,17 @@ class TFT:
 # Draw a bitmap at x,y with size sx, sy
 # mode determines the type of expected data
 # mode = 0: The data must contain 3 bytes/pixel red/green/blue
-# mode = 1: he data must contain 2 packed bytes/pixel blue/green/red in 565 format
-# mode = 2: The data must contain 3 bytes/pixel blue/green/red
+# mode = 1: The data must contain 2 packed bytes/pixel blue/green/red in 565 format
+# mode = 2: The data contains 1 bit per pixel, mapped to fg/bg color
 #
     def drawBitmap(self, x, y, sx, sy, data, mode = 0):
         self.setXY(x, y, x + sx - 1, y + sy - 1)
         if mode == 0:
             self.displaySCR_AS(data, sx * sy)
-        else:
+        elif mode == 1:
             self.displaySCR565_AS(data, sx * sy)
+        elif mode == 2:
+            pass  ## not impl. yet.
 #
 # Print string s using the small font at location x, y
 # Characters are 8 col x 12 row pixels sized
@@ -543,7 +545,7 @@ class TFT:
                     bitmap[cp + i] = font[(index * rows + row) * bytes + 4 + i]
                 cp += bytes
             if transparency:   # transparent: read background data back from frame buffer
-                self.setXY(x, y + row, x + pix_count - 1, 1)
+                self.setXY(x, y + row, x + pix_count - 1, y + row)
                 self.tft_read_cmd_data_AS(0x2e, buf, pix_count * 3)
             self.expandBitmap(buf, bitmap, size * bytes, colorvect)
             self.drawBitmap(x, y + row, pix_count, 1, buf)
@@ -750,15 +752,15 @@ class TFT:
         gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
         ptr = 0
         while size:
-            gpioa[0] = data[ptr + 1] & 0xf8  # set data on port A
+            gpioa[0] = data[ptr] & 0xf8  # set data on port A
             gpiob[1] = WR       # set WR low. C/D still high
             gpiob[0] = WR       # set WR high again
 
-            gpioa[0] = (data[ptr + 1] << 5 | (data[ptr] >> 3) & 0xfc) # set data on port A
+            gpioa[0] = (data[ptr] << 5 | (data[ptr + 1] >> 3) & 0xfc) # set data on port A
             gpiob[1] = WR       # set WR low. C/D still high
             gpiob[0] = WR       # set WR high again
 
-            gpioa[0] = (data[ptr] << 3) # set data on port A
+            gpioa[0] = (data[ptr + 1] << 3) # set data on port A
             gpiob[1] = WR       # set WR low. C/D still high
             gpiob[0] = WR       # set WR high again
             ptr += 2
@@ -870,17 +872,17 @@ class TFT:
 
         label(loopstart)
 
-        ldrb(r2, [r0, 1])  # red   
+        ldrb(r2, [r0, 0])  # red   
         mov (r3, 0xf8)     # mask out lower 3 bits
         and_(r2, r3)        
         strb(r2, [r6, 0])  # Store red
         strb(r5, [r7, 2])  # WR low
         strb(r5, [r7, 0])  # WR high
 
-        ldrb(r2, [r0, 1])  # pre green
+        ldrb(r2, [r0, 0])  # pre green
         mov (r3, 5)        # shift 5 bits up to 
         lsl(r2, r3)
-        ldrb(r4, [r0, 0])  # get the next 3 bits
+        ldrb(r4, [r0, 1])  # get the next 3 bits
         mov (r3, 3)        # shift 3 to the right
         lsr(r4, r3)
         orr(r2, r4)        # add them to the first bits
@@ -890,7 +892,7 @@ class TFT:
         strb(r5, [r7, 2])  # WR low
         strb(r5, [r7, 0])  # WR high
         
-        ldrb(r2, [r0, 0])  # blue
+        ldrb(r2, [r0, 1])  # blue
         mov (r3, 3)
         lsl(r2, r3)
         strb(r2, [r6, 0])  # store blue

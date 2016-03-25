@@ -22,6 +22,7 @@ At the moment, the code is a basic package. I have a two TFTs here, so I cannot 
 
 Since the number of port lines on Pyboard is limited, I use the 8 bit interface. With X1 to x8, these are nicely available at GPIO port A0..A7 in the right order - intentionally, I assume. For speed, the lower level functions are coded as viper or assembler functions. Both variants are supplied. Obviously, the Assembler versions are little bit faster, at the cost of LOC. The total advantage of using assembler may be limited. The assembler functions need 220ns to 260ns to send the three bytes of a display pixel, in contrast to the about 10 µs needed to call this function.
 On the upside of this 8 bit interface choice is, that you can supply up to 24 bit of color data, in contrast to the 16 bit when using the 16 bit interface.
+
 In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 30ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 250 to 350ms, depending on the speed of the SD card, the same for a 800x480 bitmap takes 500 to 700ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 40µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
 
 **Functions**
@@ -64,6 +65,16 @@ getColor()
 getBGColor() 
     # get the background color, set by a previous setBGColor call
 
+set_tft_mode([v_flip = False,][ h_flip = False,][ c_flip = False, ][orientation = LANDSCAPE])
+    # set the operation mode of the tft, equivalent to the settings used at init time.
+    orientation: which is LANDSCAPE or PORTRAIT.
+    v_flip: Flip vertical True/False
+    h_flip: Flip horizontal True/False
+    c_flip: exchange red/blue. This change is effecttive for the whole screen.
+    
+get_tft_mode()
+    # gets the 4 element tuple of v_flip, h_flip, c_flip and orientation
+
 clrSCR()
     # set the total screen to the background color.
     
@@ -94,10 +105,10 @@ drawRectangle(x1, y1, x2, y2)
 fillRectangle(x1, y1, x2, y2)
     # fill a rectangle from x1, y1, to x2, y2 with the foreground color.
 
-drawCantedRectangle(x1, y1, x2, y2)
+drawClippedRectangle(x1, y1, x2, y2)
     # draw a rectangle with canted edges from x1, y1, to x2, y2. The width of the line is 1 pixel.
 
-fillCantedRectangle(x1, y1, x2, y2)
+fillClippedRectangle(x1, y1, x2, y2)
     # fill a rectangle with canted edges from x1, y1, to x2, y2 with the foreground color.
 
 drawCircle(x, y, radius)
@@ -113,9 +124,8 @@ drawBitmap(x, y, width, height, data, mode)
       mode = 0 (default): The data must contain 3 bytes per pixel (red, green, blue), 
           which can for instance created by exporting 24 color-bit raw data files
           with gimp. The total size of data must be width * height * 3. 
-      mode != 0: The data must contain 2 bytes per pixel with packed color data 
-          (bbbbbggggggrrrrr) in big endian format (the byte with blue first), 
-          which is for instance used in 16 color-bit bmp type files. 
+      mode = 1: The data must contain 2 bytes per pixel with packed color data 
+          (rrrrrggggggbbb) in big endian format (the byte with red first). 
           The total size of data must be width * height * 2.
       No type checking of the data is performed.
 
@@ -161,16 +171,9 @@ displaySCR565_AS(data, size)
     # fill the region set with setXY() or clrXY() with the pixel values given
       in data. Size is the number of pixels, data must be a bytearray object
       of 2 * size length with the 16 bit packed red-green-blue values per pixel.
-      The color pattern per word is bbbbbggggggrrrrr, with rrrrr in the lower 
+      The color pattern per word is rrrrrggggggbbbbb, with rrrrr in the lower 
       (=first) byte. The version with the AS suffix uses inline-assembler.
           
-displaySCR_BMP(data, size)
-displaySCR_BMP_AS(data, size)
-    # fill the region set with setXY() or clrXY() with the pixel values given
-      in data. Size is the number of pixels, data must be a bytearray object
-      of 3 * size length with the 24 bit packed blue-green-red values per pixel.
-      The version with the AS suffix uses inline-assembler.
-
 tft_cmd_data(cmd, data, size)
 tft_cmd_data_AS(cmd, data, size)
     # Send a command byte and data to the controller. cmd is a single integer
@@ -191,7 +194,8 @@ tft_data_AS(cmd, data, size)
       a bytearray object size length. The version with the AS suffix uses
       inline-assembler.
 
-tft_read_data(cmd, data, size)
+tft_read_cmd_data(cmd, data, size)
+tft_read_cmd_data_AS(cmd, data, size)
     # Send a command to the tft and get the response back. cmd is the command byte, 
       data a bytearray of size length which will receive the data.
       
