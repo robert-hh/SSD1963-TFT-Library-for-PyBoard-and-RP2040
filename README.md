@@ -78,8 +78,9 @@ get_tft_mode()
 clrSCR()
     # set the total screen to the background color.
     
-backlight(Switch);
-    # Switch the LED backlight on (Switch == True) or off (Switch = False)
+backlight(percent);
+    # Set the LED backlight brightness to percent (0..100). 0 means backlight off. This
+    function requires the LED-A pin of the TFT to be connected to Y3.
 
 power(Switch);
     # Switch the power of the TFT on (Switch == True) or off (Switch = False)

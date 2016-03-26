@@ -76,6 +76,9 @@ class TFT:
         self.setBGColor((0, 0, 0))     # set BG to black
 # special treat for BG LED
         self.pin_led = pyb.Pin("Y3", pyb.Pin.OUT_PP)
+        self.led_tim = pyb.Timer(4, freq=500)
+        self.led_ch = self.led_tim.channel(3, pyb.Timer.PWM, pin=self.pin_led)
+        self.led_ch.pulse_width_percent(0)  # led off
         self.pin_led.value(0)  ## switch BG LED off
 # special treat for Power Pin
         self.pin_power = pyb.Pin("Y4", pyb.Pin.OUT_PP)
@@ -256,10 +259,14 @@ class TFT:
         else:
             return (self.disp_y_size + 1, self.disp_x_size + 1)
 #
-# switch backlight on/off
+# set backlight brightness
 #            
-    def backlight(self, onoff):
-        self.pin_led.value(onoff)  ## switch BG LED on or off
+    def backlight(self, percent):
+        if percent < 0:
+            percent = 0
+        elif percent > 100:
+            percent = 100
+        self.led_ch.pulse_width_percent(percent)  # set LED
 #
 # switch power on/off
 #            
