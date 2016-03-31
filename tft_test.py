@@ -41,7 +41,6 @@ def displayfile(mytft, name, width, height):
                 n = f.readinto(b)
                 if not n:
                     break
-                mytft.swapbytes(b, n)
                 margin = (width - imgwidth) // 2
                 if margin: ## picure with less than frame
                     mytft.drawHLine(0, row, margin)
@@ -51,24 +50,52 @@ def displayfile(mytft, name, width, height):
         elif mode == "bmp":  # Windows bmp file
             BM, filesize, res0, offset = unpack("<hiii", f.read(14))
             hdrsize, imgwidth, imgheight, planes, colors = unpack("<iiihh", f.read(16))
-            if colors in (16, 24) and imgwidth <= width: ## only 16 or 24 bit colors supported
+#            print (name, offset, imgwidth, imgheight)
+            if colors in (16, 24) and imgwidth <= width and (imgwidth % 4) == 0: ## only 16 or 24 bit colors supported
                 bytes_per_pix = colors // 8
-                offset += 6
                 f.seek(offset)
-                b = bytearray(imgwidth * bytes_per_pix)
-                for row in range(height - 1, -1, -1):
-                    n = f.readinto(b)
-                    if not n:
-                        break
-                    margin = ((width - imgwidth) // 2) + 1
-                    if margin: ## picure with less than frame
-                        mytft.drawHLine(0, row, margin)
-                        mytft.drawHLine(imgwidth - 1 + margin, row, margin)
-                    if colors == 16: ## 16 bit bmp data
-                        mytft.drawBitmap(margin, row, imgwidth - 1, 1, b, 1)
-                    else: ## 24 bit bmp has bgr data
-                        mytft.swapcolors(b, n)
-                        mytft.drawBitmap(margin, row, imgwidth - 1, 1, b)
+                hstep = imgwidth // bytes_per_pix
+                skip = ((height - imgheight) // 2)
+                if skip > 0:
+                    mytft.fillRectangle(0, height - skip, width - 1, height - 1)
+                else:
+                    skip = 0
+                if colors == 16:
+                    b1 = bytearray(imgwidth)
+                    b2 = bytearray(imgwidth)
+                    for row in range(height - skip - 1, -1, -1): 
+# read in chunks, due to the bug in the SD card libraray, avoid reading
+# more than 511 bytes at once, at a performance penalty
+# required if the seek offset was not a multiple of 4
+                        n1 = f.readinto(b1)
+                        n2 = f.readinto(b2)
+                        if not n2:
+                            break
+                        mytft.swapbytes(b1, n1)
+                        mytft.swapbytes(b2, n2)
+                        mytft.setXY(0, row, imgwidth - 1, row)
+                        mytft.displaySCR565_AS(b1, hstep)
+                        mytft.displaySCR565_AS(b2, hstep)
+                else:
+                    b1 = bytearray(imgwidth)
+                    b2 = bytearray(imgwidth)
+                    b3 = bytearray(imgwidth)
+                    for row in range(height - skip - 1, -1, -1):
+# read in chunks, due to the bug in the SD card libraray, avoid reading
+# more than 511 bytes at once, at a performance penalty
+# required if the seek offset was not a multiple of 4
+                        n1 = f.readinto(b1)
+                        n2 = f.readinto(b2)
+                        n3 = f.readinto(b3)
+                        if not n3:
+                            break
+                        mytft.swapcolors(b1, n1)
+                        mytft.swapcolors(b2, n2)
+                        mytft.swapcolors(b3, n3)
+                        mytft.setXY(0, row, imgwidth - 1, row)
+                        mytft.displaySCR_AS(b1, hstep)
+                        mytft.displaySCR_AS(b2, hstep)
+                        mytft.displaySCR_AS(b3, hstep)
                 mytft.fillRectangle(0, 0, width - 1, row)
         elif mode == "data": # raw 24 bit format with rgb data (gimp type data)
             b = bytearray(width * 3)
@@ -85,6 +112,8 @@ def main(v_flip = False, h_flip = False):
     mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
     width, height = mytft.getScreensize()
     mytft.clrSCR()
+    mytft.backlight(99)
+    
     if True:    
         mytft.printString(10, 20, "0123456789" * 5, SmallFont, 0, (255,0,0))
         mytft.printString(10, 40, "0123456789" * 5, SmallFont, 0, (255,0,0))
@@ -110,7 +139,6 @@ def main(v_flip = False, h_flip = False):
         buf = bytearray(5000)
         with open ("logo50.raw", "rb") as f:
             n = f.readinto(buf)
-        mytft.swapbytes(buf, n)
 
         for i in range(10):
             mytft.clrSCR()
@@ -120,13 +148,16 @@ def main(v_flip = False, h_flip = False):
                 mytft.drawBitmap(x, y, 50, 50, buf, 1)
             pyb.delay(1000)
 
+#    os.chdir("raw_480x800")
+#    files = os.listdir(".")
     files = "F0010.raw", "F0012.bmp", "F0013.data","F0011.raw"
 
     while True:
-        name = files[pyb.rng() % len(files)]
-        displayfile(mytft, name, width, height)
-        mytft.printString(180, 230,name, BigFont, 2)
-        pyb.delay(6000)
+        for name in files:
+#            name = files[pyb.rng() % len(files)]
+            displayfile(mytft, name, width, height)
+#            mytft.printString(180, 230,name, BigFont, 2)
+            pyb.delay(6000)
                 
-main()
+main(v_flip = False, h_flip = False)
 
