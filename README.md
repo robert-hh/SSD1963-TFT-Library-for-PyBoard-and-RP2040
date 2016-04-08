@@ -130,20 +130,44 @@ drawBitmap(x, y, width, height, data, mode)
           The total size of data must be width * height * 2.
       No type checking of the data is performed.
 
+setTextPos(x, y)
+    # Set the starting position for the following calls of
+      printString() and printChar() to x, y. x, y is the position of the leftside top pixel 
+      of the first character.
+      using the font given in font.
 
-printString(x, y, s , font [, transparency = 0][, fgcolor = None ][, bgcolor = None])
-    # Print a string s at location x, y using the font given in font.
-      The actual choices are SmallFont, BigFont or SevenSegNumFont. 
+setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dummyfont])
+    # Set the Style used for text printing with printChar() and printString()
+      If fgcolor is given, that color is used for the characters.
+      If bgcolor is given, that color is used for the background for 
       For transparency the following values are valid:
         0: no transparency. The BGcolor is used for char. background
         1: 50% transparency. The previous background is 50% dimmed
         2: full transparency. The previous bacground is kept.
-      If fgcolor is given, that color is used for the characters.
-      If bgcolor is given, that color is used for the background for 
-      transparency 0. Default are colors set by setColor() and setBGColor(). 
+        3: For teh forground color, the background color is inverted.
+      Default are colors set by setColor() and setBGColor(). 
       FGcolor and BGcolor must be triples that can be converted to a 
       bytearray, e.g. tuples, lists or strings.
+      The font used must be created e.g. using the GLCD tool and then convert it using the
+      cfonts_to_packed_py.py script of Peter Hinch, adapted to the needs of this library.
 
+printString(s [, buffer])
+    # print the string s at the location set by setTextPos() in the style detailed by setTextStyle().
+      buffer is a optional argument for a buffer reeciving the background data when transparency is
+      chosen. The size must be at least char_with * char_heigth * 3. There is no size checking involved.
+      If the buffer is too small, the program will crash.
+      printString advances the text position for the next data by the accumulated widths of the characters.
+      It will flow over to a next line, at a distance given by the char height.
+      
+printChar(c [, buffer])
+    # print the character c at the location set by setTextPos() in the style detailed by setTextStyle().
+      buffer is a optional argument for a buffer receiving the background data when transparency is
+      chosen. The size must be at least char_with * char_heigth * 3. There is no size checking involved.
+      If the buffer is too small, the program will crash.
+      printChar advances the text position for the next text by the width of the character.
+      It will flow over to a next line, if necessary, at a distance given by the char height.
+      
+      
 ----- lower level functions ---
 
 setXY(x1, y1, x2, y2)
@@ -174,6 +198,20 @@ displaySCR565_AS(data, size)
       of 2 * size length with the 16 bit packed red-green-blue values per pixel.
       The color pattern per word is rrrrrggggggbbbbb, with rrrrr in the lower 
       (=first) byte. The version with the AS suffix uses inline-assembler.
+          
+displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8)
+    # fill the region set with setXY() or clrXY() with the pixel values given
+      in bitmap. Bitmap contains a single bit per pixel in chunks, stasting
+      at a Byte boundary. The highest order bit in a byte is the first to be
+      displayed. Size is the number of net bits, w/o the padding. Control is a byte vector
+      controlling the behavior, since viper functions allow 4 arguments only.
+      Byte 0: Length of the chunks in the bitmap
+      Byte 1: Transparency mode. Set setTextStyle for the definition of the values
+      Byte 2..4: Foreground color, which is used for a bit value of 1
+      Byte 5..7: Background color, which is used for a bit value of 0
+      bg_buf must contain the frame buffer data for the pixel area chose. It is 
+      used only when the respective transparency mode is chose. No size checking
+      is performed. 
           
 tft_cmd_data(cmd, data, size)
 tft_cmd_data_AS(cmd, data, size)
@@ -212,11 +250,10 @@ Each Character is defined by ((Columns + 7) // 8) * rows bytes, row by row. Each
 **Files:**
 - tft.py: Source file with comments.
 - tft_test.py: Sample code for running the tft
-- smallfont.py, bigfont.py,sevensegnumfont.py: Three font files. Origin: Rinky-Dink Electronics, Henning Karlsen
-- dummyfont.py: Dummy versions of the three fonts, which just define a single char as placeholder
+- fonts/*: Sample fonts and tool to convert the output of the GLCD-Tool into files, sueable by this library
 - README.md: this one
 - *.raw: Sample raw bitmap files with 565 encoding (16 bits per Pixel)
-- TFT_Adaper_for_PyBoard*.zip: Three variants of PCB sketches for an adapter PCB, created with KiCad.
+- TFT_Adaper_for_PyBoard_3.zip: A PCB sketch for an adapter PCB, created with KiCad.
 
 **To Do**
 - Split the Class in basic functions and advanced ones
@@ -252,6 +289,11 @@ Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and f
 
 **0.6**
 - added two functions to switch BG LED and power on/off, just to encapsulate these.
-- added two vatriants of the PCB sketches. The 3rd variant uses a pair of transitors to switch the power
+- added two variants of the PCB sketches. The 3rd variant uses a pair of transitors to switch the power
 on and off, instead of the special power regulator which seems hard to get.
 - moved the connection to the touchpad, such that UART1 and SPI2 stay available.
+
+**0.7''
+- changed the text print method, which requires now three functions calls, setTextStyle(), setTextPos() 
+and printString() or printChar()
+ 

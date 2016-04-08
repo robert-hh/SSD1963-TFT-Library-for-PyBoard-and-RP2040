@@ -36,6 +36,7 @@
 #
 
 import pyb, stm
+from uctypes import addressof
 
 # define constants
 #
@@ -64,6 +65,7 @@ class TFT:
 # when needed. Y9 is treate seperately, since it is used for Reset, which is done at python level
 # since it need long delays anyhow, 5 and 15 ms vs. 10 µs.
 #
+# Set TFT geenral defaults
         self.controller = controller
         self.lcd_type = lcd_type
         self.orientation = orientation
@@ -246,10 +248,15 @@ class TFT:
             print("Wrong Parameter controller: ", controller)
             return
 #
+# Set character printing defaults
+#
+        self.setTextPos(0,0)
+        self.setTextStyle(None, None, 0, None, 0)
+#
 # Init done. clear Screen and switch BG LED on
 #
         self.clrSCR()           # clear the display
-#        self.pin_led.value(1)  ## switch BG LED on
+#        self.backlight(100)  ## switch BG LED on
 #
 # Return screen dimensions
 #
@@ -314,6 +321,35 @@ class TFT:
 # 
     def getBGColor(self):
         return self.BGcolor
+#
+# Set text position
+#
+    def setTextPos(self, x, y):
+        self.text_x = x
+        self.text_y = y
+        self.text_width, self.text_height = self.getScreensize()
+#
+# Get text position
+#
+    def getTextPos(self, x, y):
+        return (self.text_x, self.text_y)
+#
+# Set Text Style
+#
+    def setTextStyle(self, fgcolor = None, bgcolor = None, transparency = None, font = None, gap = None):
+        self.text_font = font 
+        if transparency != None:
+            self.transparency = transparency
+        if gap != None:
+            self.text_gap = gap
+        if fgcolor != None:
+            self.text_color = bytearray(1) + chr(self.transparency) + bytearray(fgcolor)
+        else: 
+            self.text_color = bytearray(1) + chr(self.transparency) + self.colorvect
+        if bgcolor != None:
+            self.text_color += bytearray(bgcolor)
+        else:
+            self.text_color += self.BGcolorvect
 #
 # Draw a single pixel at location x, y
 # Rather slow at 40µs/Pixel
@@ -518,75 +554,152 @@ class TFT:
         elif mode == 2:
             pass  ## not impl. yet.
 #
-# Print string s using the small font at location x, y
-# Characters are 8 col x 12 row pixels sized
-#
-    def printString(self, x, y, s, font, transparency = 0, fgcolor = None, bgcolor = None):
-        size = len(s)
-# reading the font's header info = 4 bytes
-        cols = font[0]
-        bytes = (cols + 7) // 8   # number of bytes/col
-        rows = font[1]            # Rows 
-        offset = font[2]          # Code of the first chars
-        no_of_chars = font[3]     # Number of chars in font set
-# set data arrays
-        if fgcolor:
-            colorvect = bytearray(font[0:1]) + chr(transparency) + bytearray(fgcolor)
-        else: 
-            colorvect = bytearray(font[0:1]) + chr(transparency) + self.colorvect
-        if bgcolor:
-            colorvect += bytearray(bgcolor)
-        else:
-            colorvect += self.BGcolorvect
-#
-        pix_count = size * cols
-        bitmap = bytearray(size * bytes)
-        buf = bytearray(pix_count * 3)
-        for row in range(rows):
-            cp = 0
-            for col in range(size):
-                index = ((ord(s[col]) & 0x7f) - offset)
-                if index < 0 or index >= no_of_chars: 
-                    index = 0
-                for i in range(bytes):
-                    bitmap[cp + i] = font[(index * rows + row) * bytes + 4 + i]
-                cp += bytes
-            if transparency:   # transparent: read background data back from frame buffer
-                self.setXY(x, y + row, x + pix_count - 1, y + row)
-                self.tft_read_cmd_data_AS(0x2e, buf, pix_count * 3)
-            self.expandBitmap(buf, bitmap, size * bytes, colorvect)
-            self.drawBitmap(x, y + row, pix_count, 1, buf)
-#
-# Print string helper function for expanding the bitmap
+# Print string s 
 # 
+    def printString(self, s, bg_buf = None):
+        for c in s:
+            self.printChar(c, bg_buf)
+#
+# Print string c using the given char bitmap at location x, y
+# 
+    def printChar(self, c, bg_buf = None):
+# get the charactes pixel bitmap and dimensions
+#        if self.text_font:
+        fontptr, rows, cols = self.text_font.get_ch(ord(c))
+#        else:
+#            raise ValueError('No font set')
+        pix_count = cols * rows   # number of bits in the char
+# test char fit
+        if self.text_x + cols > self.text_width:  # does the char fit on the screen?
+            self.text_x = 0             # no, advance to the next line
+            self.text_y += rows
+# check for row/column order
+        self.flip_rc_order()   # change row/column order
+# set data arrays & XY-Range
+        if self.transparency: # in case of transpareny, the frame buffer content is needed
+            if not bg_buf:    # buffer allocation needed?
+                bg_buf = bytearray(pix_count * 3) # sigh...
+            self.setXY(self.text_x, self.text_y, self.text_x + cols - 1, self.text_y + rows - 1) # set area
+            self.tft_read_cmd_data_AS(0x2e, bg_buf, pix_count * 3) # read background data
+        else:
+            bg_buf = 0 # dummy assignment, since None is not accepted
+# print char
+        self.setXY(self.text_x, self.text_y, self.text_x + cols - 1, self.text_y + rows - 1) # set area
+        self.displaySCR_bitmap(fontptr, pix_count, self.text_color, bg_buf) # display char!
+        self.flip_rc_order()  # change row/column order back
+#advance pointer
+        self.text_x += (cols + self.text_gap)
+#
+# display bitmap
+#
     @staticmethod
     @micropython.viper        
-    def expandBitmap(buf: ptr8, bitmap: ptr8, size: int, color: ptr8):
-        bp = 0
-        cols = color[0]
-        for col in range(size):
-            bits = bitmap[col]
-            for i in range(8):
-                if bits & 0x80:
-                    buf[bp] = color[2]
-                    buf[bp + 1] = color[3]
-                    buf[bp + 2] = color[4]
-                else:
-                    if color[1] == 0: # not transparent
-                        buf[bp] = color[5]
-                        buf[bp + 1] = color[6]
-                        buf[bp + 2] = color[7]
-                    elif color[1] == 1: # Dim background
-                        buf[bp] = buf[bp] >> 1
-                        buf[bp + 1] = buf[bp + 1] >> 1
-                        buf[bp + 2] = buf[bp + 2] >> 1
-                bits <<= 1
-                bp += 3
-                cols -= 1
-                if cols == 0: # Bit cols per char used up, go to next byte
-                    cols = color[0]
-                    break
+    def displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
+        gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
+        gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
 #
+        transparency = control[1]
+        bm_ptr = 0
+        bg_ptr = 0
+        mask   = 0x80
+        while size:
+            if bits[bm_ptr] & mask:
+                if transparency != 3: # not invert
+                    gpioa[0] = control[2]     # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = control[3]      # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = control[4]      # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+                else: # Invert bg color
+                    gpioa[0] = 255 - bg_buf[bg_ptr] # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = 255 - bg_buf[bg_ptr + 1]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = 255 - bg_buf[bg_ptr + 2]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+            else:
+                if transparency == 0: # not transparent
+                    gpioa[0] = control[5]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = control[6]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = control[7]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+                elif transparency == 1: # Dim background
+                    gpioa[0] = bg_buf[bg_ptr] >> 1  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = bg_buf[bg_ptr + 1] >> 1  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = bg_buf[bg_ptr + 2] >> 1  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+                else: # Keep background
+                    gpioa[0] = bg_buf[bg_ptr] # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = bg_buf[bg_ptr + 1]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[0] = bg_buf[bg_ptr + 2]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+            mask >>= 1
+            if mask == 0: # map ptr advance on byte exhaust
+                mask = 0x80
+                bm_ptr += 1
+            size -= 1
+            bg_ptr += 3
+#
+# flip rc oder
+#
+    @staticmethod
+    @micropython.viper        
+    def flip_rc_order():
+        gpioa = ptr8(stm.GPIOA)
+        gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
+        gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
+    
+        gpioa[stm.GPIO_ODR] = 0x0b         # get mode byte
+
+        gpiob[1] = D_C | WR     # set C/D and WR low
+        gpiob[0] = D_C | WR     # set C/D and WR high
+
+        gpioam[0] = 0       # configure X1..X8 as Input
+        gpiob[1] = RD       # set RD low. C/D still high
+        gpiob[0] = RD       # set RD high again
+        mode = gpioa[stm.GPIO_IDR] ^ 0x20  # get data from port A and flip bit
+
+        gpioam[0] = 0x5555  # configure X1..X8 as Output
+
+        gpioa[stm.GPIO_ODR] = 0x36         # writ mode byte
+        gpiob[1] = D_C | WR     # set C/D and WR low
+        gpiob[0] = D_C | WR     # set C/D and WR high
+
+        gpioa[stm.GPIO_ODR] = mode      # set data on port A
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again#
 # Set the address range for various draw copmmands and set the TFT for expecting data
 #
     @staticmethod
