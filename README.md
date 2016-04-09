@@ -33,8 +33,8 @@ Create instance:
 mytft = TFT(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])
     controller: String with the controller model. At the moment, "SSD1963" is the only 
                 one supported
-    lct_type: type of LCD. At the moment, "LB04301" (480x272, 4.3") and "AT070TN92" (800x480, 7") 
-              are supported.
+    lct_type: type of LCD. At the moment, "LB04301" (480x272, 4.3") and
+              "AT070TN92" (800x480, 7") are supported.
     orientation: which is LANDSCAPE or PORTRAIT
     flip_vertical: Flip vertical True/False
     flip_horizontal: Flip horizontal True/False
@@ -43,9 +43,9 @@ Functions:
 
 tft_init(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])
     # repeat the initialization which was peformed during creation of the instance.
-      This function must be called if the TFT power was switched off, but PyBoard kept on running.
-      tft_init is called by __init__() during the creation of the instance. It includes the call
-      to power(True).
+      This function must be called if the TFT power was switched off, but PyBoard kept
+      on running. tft_init is called by __init__() during the creation of the instance.
+      It includes the call to power(True), but leaves the backlight off!
 
 getScreensize():
     # return a tuple of logical screen width and height
@@ -151,24 +151,33 @@ setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dumm
       Default are colors set by setColor() and setBGColor(). 
       FGcolor and BGcolor must be triples that can be converted to a 
       bytearray, e.g. tuples, lists or strings.
-      The font used must be created e.g. using the GLCD tool and then convert it using the
-      cfonts_to_packed_py.py script of Peter Hinch, adapted to the needs of this library.
+      The font used must be created e.g. using the GLCD tool and then convert it using
+      the cfonts_to_packed_py.py script of Peter Hinch, adapted to the needs of 
+      this library.
 
 printString(s [, buffer])
-    # print the string s at the location set by setTextPos() in the style detailed by setTextStyle().
-      buffer is a optional argument for a buffer reeciving the background data when transparency is
-      chosen. The size must be at least char_with * char_heigth * 3. There is no size checking involved.
-      If the buffer is too small, the program will crash.
-      printString advances the text position for the next data by the accumulated widths of the characters.
-      It will flow over to a next line, at a distance given by the char height.
+    # print the string s at the location set by setTextPos() in the style 
+      detailed by setTextStyle().
+      buffer:  is a optional argument for a buffer receiving the background data when
+        transparency is chosen. The size must be at least char_with * char_heigth * 3.
+        There is no size checking involved. If the buffer is too small, 
+        the program will crash. 
+      printChar advances the text position for the next text by the width of the
+      character. It will flow over to a next line, if necessary, at a distance 
+      given by the char height.
+      Before printing text, the font must be set with setTextStyle()
       
 printChar(c [, buffer])
-    # print the character c at the location set by setTextPos() in the style detailed by setTextStyle().
-      buffer is a optional argument for a buffer receiving the background data when transparency is
-      chosen. The size must be at least char_with * char_heigth * 3. There is no size checking involved.
-      If the buffer is too small, the program will crash.
-      printChar advances the text position for the next text by the width of the character.
-      It will flow over to a next line, if necessary, at a distance given by the char height.
+    # print the character c at the location set by setTextPos() in the style 
+      detailed by setTextStyle().
+      buffer: is a optional argument for a buffer receiving the background data when
+        transparency is chosen. The size must be at least char_with * char_heigth * 3.
+        There is no size checking involved. If the buffer is too small, 
+        the program will crash. 
+      printChar advances the text position for the next text by the width of the
+      character. It will flow over to a next line, if necessary, at a distance 
+      given by the char height.
+      Before printing text, the font must be set with setTextStyle()
       
 ```      
 ## Lower level functions ##
@@ -207,9 +216,10 @@ displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8)
       in bitmap. Bitmap contains a single bit per pixel in chunks, stasting
       at a Byte boundary. The highest order bit in a byte is the first to be
       displayed. Size is the number of bits the bitmap. Control is a byte vector
-      controlling the behavior, since viper functions allow 4 arguments only.
+      with further parametsr controlling the behavior, coded here,
+      since viper functions allow 4 arguments only.
       Byte 0: Unused
-      Byte 1: Transparency mode. Set setTextStyle for the definition of the values
+      Byte 1: Transparency mode. See setTextStyle for the value definition
       Byte 2..4: Foreground color, which is used for a bit value of 1
       Byte 5..7: Background color, which is used for a bit value of 0
       bg_buf must contain the frame buffer data for the pixel area chose. It is 
@@ -219,7 +229,7 @@ displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8)
 tft_cmd_data(cmd, data, size)
 tft_cmd_data_AS(cmd, data, size)
     # Send a command byte and data to the controller. cmd is a single integer
-      with the command, data a bytearray of size length with the command payload.  
+      with the command, data a bytearray of size length with the command payload.
       The version with the AS suffix uses inline-assembler.
       During start-up of the tft, when the device is clocked by the 10MHz or 
       6.5 MHz crystal, the assembler version is a little bit too fast.
@@ -259,8 +269,8 @@ TFTfont(fontbitmap, index, vert, hor, no_of_chars [, first_char=32])
     fontbitmap:  the data array with the pixel data
     index: an index array with the offsets of the character bitmaps to the start of the array
     vert: the vertical size of the font in pxels
-    hor: the largest horizontal size of the font in pixels. For proportionally spaced fonts this value may 
-         differ for every charactes
+    hor: the largest horizontal size of the font in pixels. For proportionally spaced fonts 
+         this value may differ for every charactes
     no_of_chars: the number of characters defined in this font
     first_char: the ordinal value of the first characted in the font. Default is 32 (Space)
     
@@ -273,6 +283,7 @@ get_char(c)
     vert: The vertical size of the character
     hor:  the horizontal size of the character
     The total number of bits in the character bitmap is n = vert*hor.
+    
 ```
 #Files#
 - tft.py: Source file with comments.
