@@ -1,6 +1,6 @@
-#TFT Class for a TFT with SSD1963 controller
+**TFT Class for a TFT with SSD1963 controller**
 
-**Description**
+#Description and physical interface#
 
 A Python class for controlling a graphical display with a SSD1963 controller and a 40 PIN interface, which is widely available in the electronics stores. It is a port of the great UTFT driver from Rinky-Dink Electronics, Henning Karlsen. This port uses at least 11 control lines for the 8080-type interface style:
 
@@ -25,7 +25,8 @@ On the upside of this 8 bit interface choice is, that you can supply up to 24 bi
 
 In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 30ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 250 to 350ms, depending on the speed of the SD card, the same for a 800x480 bitmap takes 500 to 700ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 40µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
 
-**Functions**
+#Class TFT#
+##High level functions##
 ```
 Create instance:
 
@@ -92,7 +93,7 @@ drawPixel(x, y)
 drawLine(x1, y2, x2, y2)
     # draw a line from x1, y1 to x2, y2. If the line is horizontal or vertical, 
       the respective functions are used. Otherwise drawPixel is used. 
-      That's where Python gets slow.
+      That is where Python gets slow.
 
 drawHLine(x, y, len)
     # draw a horizontal line from x,y of len length
@@ -133,8 +134,10 @@ drawBitmap(x, y, width, height, data, mode)
 setTextPos(x, y)
     # Set the starting position for the following calls of
       printString() and printChar() to x, y. x, y is the position of the leftside top pixel 
-      of the first character.
-      using the font given in font.
+      of the first character using the font given in font.
+      
+getTextPos()
+    # return a tuple with the actual x,y values of the text postion for the next char printed
 
 setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dummyfont])
     # Set the Style used for text printing with printChar() and printString()
@@ -143,8 +146,8 @@ setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dumm
       For transparency the following values are valid:
         0: no transparency. The BGcolor is used for char. background
         1: 50% transparency. The previous background is 50% dimmed
-        2: full transparency. The previous bacground is kept.
-        3: For teh forground color, the background color is inverted.
+        2: full transparency. The previous background is kept.
+        3: for the forground color, each background pixel value is inverted.
       Default are colors set by setColor() and setBGColor(). 
       FGcolor and BGcolor must be triples that can be converted to a 
       bytearray, e.g. tuples, lists or strings.
@@ -167,9 +170,9 @@ printChar(c [, buffer])
       printChar advances the text position for the next text by the width of the character.
       It will flow over to a next line, if necessary, at a distance given by the char height.
       
-      
------ lower level functions ---
-
+```      
+## Lower level functions ##
+```
 setXY(x1, y1, x2, y2)
     # set the region for the bulk transfer functions fillSCR() and displaySCRxx()
     
@@ -203,9 +206,9 @@ displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8)
     # fill the region set with setXY() or clrXY() with the pixel values given
       in bitmap. Bitmap contains a single bit per pixel in chunks, stasting
       at a Byte boundary. The highest order bit in a byte is the first to be
-      displayed. Size is the number of net bits, w/o the padding. Control is a byte vector
+      displayed. Size is the number of bits the bitmap. Control is a byte vector
       controlling the behavior, since viper functions allow 4 arguments only.
-      Byte 0: Length of the chunks in the bitmap
+      Byte 0: Unused
       Byte 1: Transparency mode. Set setTextStyle for the definition of the values
       Byte 2..4: Foreground color, which is used for a bit value of 1
       Byte 5..7: Background color, which is used for a bit value of 0
@@ -239,40 +242,70 @@ tft_read_cmd_data_AS(cmd, data, size)
       data a bytearray of size length which will receive the data.
       
 ```
-**Fonts**
-A font is defined a bytes string or byte array with a fixed amount of data per character. The first four bytes define the characteristics:
-Offset 0: Columns - Pixel width of the font
-Offset 1: Rows - Pixel height of the font
-Offset 2: Ordinal number of the first character in the font. Typically this is 0x20 (space)
-Offset 3: Number of character in the font set.
-Each Character is defined by ((Columns + 7) // 8) * rows bytes, row by row. Each Character pixel row must consist of a full number of bytes. For instance 12 columns require 2 bytes per row. If a character is not in the font set, usually the first character of the set is printed.
+#Class TFTfont#
+Fonts used by the TFT lib are instances of a class. They are created in two steps:
+1. Use GLCD font converter of MicroElectronica [http://www.mikroe.com/glcd-font-creator/](http://www.mikroe.com/glcd-font-creator/) to convert an ttf or otf font into a C data file. Take care to export the C variant. The free version may not allow to store the file directly. Then make use of the option 'copy to Clipboard'. By default, the character values 32 to 127 are converted. You may extend that. There is a bug in the tool when you start at char 0. Then, only the first char will be exported. If you like to include 0, you have to do two steps and combine the output manually.
 
-**Files:**
+2.  Use the script cfont_to_packed_py.py to convert the C-file ouput of GLCD into a python script, containing the font class, e.g.
+```./cfont_to_packed_py.py font12.c -o font12.py```. If your character set does not start with the space character, you have to add another argument to the creation of the instance, which is the ordinal value of the first char in the font.
+
+
+The resulting python file can be imported to your code, defining font names, e.g.
+```from font12 import font12```
+The font class exports two functions:
+```
+TFTfont(fontbitmap, index, vert, hor, no_of_chars [, first_char=32])
+    This creates the instance of the font. Parameters:
+    fontbitmap:  the data array with the pixel data
+    index: an index array with the offsets of the character bitmaps to the start of the array
+    vert: the vertical size of the font in pxels
+    hor: the largest horizontal size of the font in pixels. For proportionally spaced fonts this value may 
+         differ for every charactes
+    no_of_chars: the number of characters defined in this font
+    first_char: the ordinal value of the first characted in the font. Default is 32 (Space)
+    
+get_char(c)
+    Return the character bitmap and dimensions. c is the ordinal value of the character. 
+    The return value is a tuple comprising of:
+    bitmap: The address of a packed bitmap defining character pixels column-by-column. 
+            Taken as Python object, this is an int, to be seen by a viper or 
+            assembler function as a ptr8 data type.
+    vert: The vertical size of the character
+    hor:  the horizontal size of the character
+    The total number of bits in the character bitmap is n = vert*hor.
+```
+#Files#
 - tft.py: Source file with comments.
-- tft_test.py: Sample code for running the tft
-- fonts/*: Sample fonts and tool to convert the output of the GLCD-Tool into files, sueable by this library
+- TFTfont.py: Font class template, used by the font files
+- fonts/*: Sample fonts and the tool to convert the output of the GLCD-program into files needed by this library
 - README.md: this one
-- *.raw: Sample raw bitmap files with 565 encoding (16 bits per Pixel)
-- TFT_Adaper_for_PyBoard_3.zip: A PCB sketch for an adapter PCB, created with KiCad.
+- tft_test.py: Sample code using the tft library
+- *.raw, *.data, *.bmp: Sample bitmap files with 
+    * 565 encoding (16 bits per Pixel) (*.raw),
+    * 24 bits per Pixel raw data, generated with Gimp export raw (*.data), and 
+    * windows bitmap files with 16 or 24 colors (*.bmp).
+    
+  The tft_test.py script shows how to display them on the TFT.
+- TFT_Adaper_for_PyBoard_3.zip: A PCB sketch for an adapter PCB, created with KiCad, including a PyBoard module.
 
+#Remarks#
 **To Do**
-- Split the Class in basic functions and advanced ones
-- Some experiments with LCD settings. E.g. a more elegant way to change between Portrait and Landscape mode.
-- Other text fonts
+- Scrolling for text.
+- Cleaning up the code
 
 **Things beyond the horizon at the moment**
-- Try other display sizes
+- Try other display sizes than 480x272 and 800x480
 - Other Controllers
 
-**Short Version History**
+#Short Version History#
 
-**0.1** 
+**0.1** Initial Release
 Initial release with some basic functions, limited to a 480x272 display in landscape mode and PyBoard. More a proof of feasibilty.
 
-**0.2** 
+**0.2** Portrait and Landscape mode
 Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and fillCircle()
 
-**0.3** 
+**0.3** Added more functions
 - Font widths do not have to be a multiple of 8 any more. 
 - Added drawCantedRectangle() and fillCantedrectangle(). 
 - Changed the arguments of the constructor to name the controller and lcd type instead of controller and dimensions. The lcd type defines the size, the default orientation and the required initialization code. 
@@ -282,18 +315,19 @@ Established PORTRAIT and LANDSCAPE mode. Added printString(), drawCircle() and f
 - Some explanations on how to determine the LCD settings of the SSD1963 from the LCD data sheet, embedded in the source file.
 - The graphic file conversion for displaying as a RGB data bitmap is nicely done by Gimp, the Swiss Army Knife of graphics. Just export the picture as raw data!
 
-**0.5** Split op files
+**0.5** Split up files
 - Split up the class files and the font files
 - Some testing and fixing of little bugs
 - Changed the byte order in drawBitmap_565(), displaySCR565 and displaySCR565_AS. Now it is consistent to the bmp 65k color file type.
 
-**0.6**
+**0.6** Changed to the PCB Layout and Backlight
 - added two functions to switch BG LED and power on/off, just to encapsulate these.
-- added two variants of the PCB sketches. The 3rd variant uses a pair of transitors to switch the power
+- added two variants of the PCB sketches. The 3rd variant uses a pair of transistors to switch the power
 on and off, instead of the special power regulator which seems hard to get.
-- moved the connection to the touchpad, such that UART1 and SPI2 stay available.
+- moved the connection to the touchpad to other ports, such that both UART1 and SPI2 stay available.
 
-**0.7''
+**0.7** Changed text printing and font handling completely, with the kind cooperation of Peter Hinch
 - changed the text print method, which requires now three functions calls, setTextStyle(), setTextPos() 
 and printString() or printChar()
- 
+- changed backlight(on/off) to backlight(brightness)
+- some minor changes to the interface PCB layout 
