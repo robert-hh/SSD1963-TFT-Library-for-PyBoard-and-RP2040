@@ -119,26 +119,14 @@ def main(v_flip = False, h_flip = False):
     mytft.clrSCR()
     mytft.backlight(99)
     
-    if False:
-        mytft.setScrollArea(0, height, 0)
-        mytft.setTextPos(0, 0)
-        mytft.setTextStyle((240, 240, 240), None, 0, font6mono)
-        mytft.printString("Zeile 1")
-        input("Nü? ")
-        mytft.setScrollStart(100)
-        input("Und? ")
-        mytft.setTextPos(0, 0)
-        mytft.printString("Neue Zeile 1")
-        return
-        
     if True:    
         s = "0123456789"
         mytft.setTextPos(0, 0)
-        mytft.setTextStyle((240, 240, 240), None, 0, font6mono)
+        mytft.setTextStyle((240, 240, 240), None, 0, font7hex)
         start = pyb.millis()
-        for j in range(36):
+        for j in range(15):
             mytft.printString("Line {:4} ".format(j))
-            for i in range(7):
+            for i in range(5):
                 mytft.printString(s)
         mytft.printString(">")
         print(pyb.elapsed_millis(start))
@@ -151,7 +139,7 @@ def main(v_flip = False, h_flip = False):
             mytft.printString("0123456789" * 5)
             mytft.setTextPos(0, 20)
             mytft.printString("abcdefghijklmnopqrstuvwxyz" * 2)
-            pyb.delay(4000)
+            pyb.delay(2000)
 
             mytft.setTextPos(0, 0)
             bg_buf = bytearray(font14.bits_horiz * font14.bits_vert * 3) # preallocate the buffer for transparency

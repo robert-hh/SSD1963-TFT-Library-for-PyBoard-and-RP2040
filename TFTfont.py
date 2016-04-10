@@ -19,4 +19,8 @@ class TFTFont(object):
         delta = (relch + 1) * 2            # index is 2 bytes/char
         delta =  (self._index[delta] + (self._index[delta + 1] << 8)) - offset
         return addressof(self._font) + offset, self.bits_vert, (delta * 8) // self.bits_vert
-
+#
+# Get the invariant properties of the font
+# 
+    def get_properties(self):
+        return self.bits_vert, self.bits_horiz, self.nchars, self.firstchar

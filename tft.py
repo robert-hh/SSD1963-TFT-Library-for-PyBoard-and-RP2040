@@ -602,7 +602,7 @@ class TFT:
     def printClrEOL(self): # clear to end of line
         self.setXY(self.text_x, self.text_y, 
                    self.text_width - self.text_x - 1, self.text_y + self.text_rows - 1) # set display window
-        self.fillSCR_AS(self.BGcolorvect, self.text_width * self.text_rows)
+        self.fillSCR_AS(self.text_color, self.text_width * self.text_rows)
 #
 # Print string s 
 # 
@@ -621,8 +621,6 @@ class TFT:
             self.printCR()      # No, then CR
             self.printNewline() # NL: advance to the next line
             self.printClrEOL()  # clear to end of line
-# change row/column order
-        self.flip_rc_order()   # change row/column order
 # set data arrays & XY-Range
         if self.transparency: # in case of transpareny, the frame buffer content is needed
             if not bg_buf:    # buffer allocation needed?
@@ -634,7 +632,6 @@ class TFT:
 # print char
         self.setXY(self.text_x, self.text_y, self.text_x + cols - 1, self.text_y + rows - 1) # set area
         self.displaySCR_bitmap(fontptr, pix_count, self.text_color, bg_buf) # display char!
-        self.flip_rc_order()  # change row/column order back
 #advance pointer
         self.text_x += (cols + self.text_gap)
 #
@@ -653,33 +650,33 @@ class TFT:
         mask   = 0x80
 #        rd_command = 0x2e  ## start read
         while size:
-#            if False: # transparency: # read back data
-#                gpioa[stm.GPIO_ODR] = rd_command         # start/continue read command
-#                gpiob[1] = D_C | WR     # set C/D and WR low
-#                gpiob[0] = D_C | WR     # set C/D and WR high
+#           if False: # transparency: # read back data
+#               gpioa[stm.GPIO_ODR] = rd_command         # start/continue read command
+#               gpiob[1] = D_C | WR     # set C/D and WR low
+#               gpiob[0] = D_C | WR     # set C/D and WR high
 
-#                gpioam[0] = 0       # configure X1..X8 as Input
+#               gpioam[0] = 0       # configure X1..X8 as Input
 
-#                gpiob[1] = RD       # set RD low. C/D still high
-#                rd_command = 0x3e      # continue read
-#                bg_red = gpioa[stm.GPIO_IDR]  # get data from port A
-#                gpiob[0] = RD       # set RD high again
+#               gpiob[1] = RD       # set RD low. C/D still high
+#               rd_command = 0x3e      # continue read
+#               bg_red = gpioa[stm.GPIO_IDR]  # get data from port A
+#               gpiob[0] = RD       # set RD high again
 
-#                gpiob[1] = RD       # set RD low. C/D still high
-#                delay = 1
-#                bg_green = gpioa[stm.GPIO_IDR]  # get data from port A
-#                gpiob[0] = RD       # set RD high again
+#               gpiob[1] = RD       # set RD low. C/D still high
+#               delay = 1
+#               bg_green = gpioa[stm.GPIO_IDR]  # get data from port A
+#               gpiob[0] = RD       # set RD high again
 
-#                gpiob[1] = RD       # set RD low. C/D still high
-#                delay = 1
-#                bg_blue = gpioa[stm.GPIO_IDR]  # get data from port A
-#                gpiob[0] = RD       # set RD high again
+#               gpiob[1] = RD       # set RD low. C/D still high
+#               delay = 1
+#               bg_blue = gpioa[stm.GPIO_IDR]  # get data from port A
+#               gpiob[0] = RD       # set RD high again
 
-#                gpioam[0] = 0x5555  # configure X1..X8 as Output
+#               gpioam[0] = 0x5555  # configure X1..X8 as Output
 
-#                gpioa[stm.GPIO_ODR] = 0x3c         # continue write command
-#                gpiob[1] = D_C | WR     # set C/D and WR low
-#                gpiob[0] = D_C | WR     # set C/D and WR high
+#               gpioa[stm.GPIO_ODR] = 0x3c         # continue write command
+#               gpiob[1] = D_C | WR     # set C/D and WR low
+#               gpiob[0] = D_C | WR     # set C/D and WR high
 
             if bits[bm_ptr] & mask:
                 if transparency != 3: # not invert
@@ -750,36 +747,7 @@ class TFT:
             size -= 1
             bg_ptr += 3
 #
-# flip rc oder
-#
-    @staticmethod
-    @micropython.viper        
-    def flip_rc_order():
-        gpioa = ptr8(stm.GPIOA)
-        gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
-        gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
-    
-        gpioa[stm.GPIO_ODR] = 0x0b         # get mode byte
-
-        gpiob[1] = D_C | WR     # set C/D and WR low
-        gpiob[0] = D_C | WR     # set C/D and WR high
-
-        gpioam[0] = 0       # configure X1..X8 as Input
-        gpiob[1] = RD       # set RD low. C/D still high
-        delay = 1
-        mode = gpioa[stm.GPIO_IDR] ^ 0x20  # get data from port A and flip bit
-        gpiob[0] = RD       # set RD high again
-
-        gpioam[0] = 0x5555  # configure X1..X8 as Output
-
-        gpioa[stm.GPIO_ODR] = 0x36         # writ mode byte
-        gpiob[1] = D_C | WR     # set C/D and WR low
-        gpiob[0] = D_C | WR     # set C/D and WR high
-
-        gpioa[stm.GPIO_ODR] = mode      # set data on port A
-        gpiob[1] = WR       # set WR low. C/D still high
-        gpiob[0] = WR       # set WR high again#
-# the address range for various draw copmmands and set the TFT for expecting data
+# Set the address range for various draw commands and set the TFT for expecting data
 #
     @staticmethod
     @micropython.viper        
