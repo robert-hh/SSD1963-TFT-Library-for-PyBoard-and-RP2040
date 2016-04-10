@@ -324,10 +324,13 @@ class TFT:
 #
 # Set text position
 #
-    def setTextPos(self, x, y):
-        self.text_x = x
-        self.text_y = y
+    def setTextPos(self, x, y, rel = False):
         self.text_width, self.text_height = self.getScreensize()
+        self.text_x = x
+        if rel: # relative line
+            self.text_y = (y + self.scroll_start) % self.text_height
+        else:  # absolute
+            self.text_y = y
 #
 # Get text position
 #
@@ -338,18 +341,26 @@ class TFT:
 #
     def setTextStyle(self, fgcolor = None, bgcolor = None, transparency = None, font = None, gap = None):
         self.text_font = font 
+        if font:
+            self.text_rows, hor, nchar, first = font.get_properties() # 
         if transparency != None:
             self.transparency = transparency
         if gap != None:
             self.text_gap = gap
-        if fgcolor != None:
-            self.text_color = bytearray(1) + chr(self.transparency) + bytearray(fgcolor)
-        else: 
-            self.text_color = bytearray(1) + chr(self.transparency) + self.colorvect
+        self.text_color = bytearray(0)
         if bgcolor != None:
             self.text_color += bytearray(bgcolor)
         else:
             self.text_color += self.BGcolorvect
+        if fgcolor != None:
+            self.text_color += bytearray(fgcolor)
+        else: 
+            self.text_color += self.colorvect
+        if transparency != None:
+            self.transparency = transparency
+        self.text_color  += bytearray([self.transparency])
+        if gap != None:
+            self.text_gap = gap
 #
 # Draw a single pixel at location x, y
 # Rather slow at 40µs/Pixel
@@ -363,6 +374,7 @@ class TFT:
     def clrSCR(self):
         self.clrXY()
         self.fillSCR_AS(self.BGcolorvect, (self.disp_x_size + 1) * (self.disp_y_size + 1))
+        self.text_x = self.text_y = self.scroll_start = 0
 #
 # Draw a line from x1, y1 to x2, y2 with the color set by setColor()
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -552,7 +564,45 @@ class TFT:
         elif mode == 1:
             self.displaySCR565_AS(data, sx * sy)
         elif mode == 2:
-            pass  ## not impl. yet.
+            control = bytearray(self.BGcolorvect + self.colorvect + chr(self.transparency))
+            self.displaySCR_bitmap(data, sx*sy, control, 0)
+#
+# set scroll area to the region between the first and last line
+#
+    def setScrollArea(self, tfa, vsa, bfa):
+        self.tft_cmd_data_AS(0x33, bytearray(  #set scrolling range
+                    [(tfa >> 8) & 0xff, tfa & 0xff, 
+                     (vsa >> 8) & 0xff, vsa & 0xff,
+                     (bfa >> 8) & 0xff, bfa & 0xff]), 6)
+#
+# set the line which is displayed first
+#
+    def setScrollStart(self, lline):
+        self.tft_cmd_data_AS(0x37, bytearray([(lline >> 8) & 0xff, lline & 0xff]), 2)
+        self.scroll_start = lline # store the logical first line
+#
+# Check, if a new line is to be opened
+# if yes, advance, including scrolling, and clear line, if flags is set
+#
+    def printNewline(self):
+        self.text_y += self.text_rows
+        if self.text_y >= self.text_height:
+            self.text_y = 0
+            self.setScrollStart((self.scroll_start + self.text_rows) % self.text_height)
+        elif self.scroll_start > 0: # Scrolling has started
+            self.setScrollStart((self.scroll_start + self.text_rows) % self.text_height)
+#
+# Carriage Return
+#
+    def printCR(self): # clear to end of line
+        self.text_x = 0
+#
+# clear to end-of-line
+#
+    def printClrEOL(self): # clear to end of line
+        self.setXY(self.text_x, self.text_y, 
+                   self.text_width - self.text_x - 1, self.text_y + self.text_rows - 1) # set display window
+        self.fillSCR_AS(self.BGcolorvect, self.text_width * self.text_rows)
 #
 # Print string s 
 # 
@@ -564,16 +614,14 @@ class TFT:
 # 
     def printChar(self, c, bg_buf = None):
 # get the charactes pixel bitmap and dimensions
-#        if self.text_font:
         fontptr, rows, cols = self.text_font.get_ch(ord(c))
-#        else:
-#            raise ValueError('No font set')
         pix_count = cols * rows   # number of bits in the char
 # test char fit
         if self.text_x + cols > self.text_width:  # does the char fit on the screen?
-            self.text_x = 0             # no, advance to the next line
-            self.text_y += rows
-# check for row/column order
+            self.printCR()      # No, then CR
+            self.printNewline() # NL: advance to the next line
+            self.printClrEOL()  # clear to end of line
+# change row/column order
         self.flip_rc_order()   # change row/column order
 # set data arrays & XY-Range
         if self.transparency: # in case of transpareny, the frame buffer content is needed
@@ -595,74 +643,104 @@ class TFT:
     @staticmethod
     @micropython.viper        
     def displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
-        gpioa = ptr8(stm.GPIOA + stm.GPIO_ODR)
+        gpioa = ptr8(stm.GPIOA)
         gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
+        gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
 #
-        transparency = control[1]
+        transparency = control[6]
         bm_ptr = 0
         bg_ptr = 0
         mask   = 0x80
+#        rd_command = 0x2e  ## start read
         while size:
+#            if False: # transparency: # read back data
+#                gpioa[stm.GPIO_ODR] = rd_command         # start/continue read command
+#                gpiob[1] = D_C | WR     # set C/D and WR low
+#                gpiob[0] = D_C | WR     # set C/D and WR high
+
+#                gpioam[0] = 0       # configure X1..X8 as Input
+
+#                gpiob[1] = RD       # set RD low. C/D still high
+#                rd_command = 0x3e      # continue read
+#                bg_red = gpioa[stm.GPIO_IDR]  # get data from port A
+#                gpiob[0] = RD       # set RD high again
+
+#                gpiob[1] = RD       # set RD low. C/D still high
+#                delay = 1
+#                bg_green = gpioa[stm.GPIO_IDR]  # get data from port A
+#                gpiob[0] = RD       # set RD high again
+
+#                gpiob[1] = RD       # set RD low. C/D still high
+#                delay = 1
+#                bg_blue = gpioa[stm.GPIO_IDR]  # get data from port A
+#                gpiob[0] = RD       # set RD high again
+
+#                gpioam[0] = 0x5555  # configure X1..X8 as Output
+
+#                gpioa[stm.GPIO_ODR] = 0x3c         # continue write command
+#                gpiob[1] = D_C | WR     # set C/D and WR low
+#                gpiob[0] = D_C | WR     # set C/D and WR high
+
             if bits[bm_ptr] & mask:
                 if transparency != 3: # not invert
-                    gpioa[0] = control[2]     # set data on port A
+                    gpioa[stm.GPIO_ODR] = control[3]     # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = control[3]      # set data on port A
+                    gpioa[stm.GPIO_ODR] = control[4]      # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = control[4]      # set data on port A
+                    gpioa[stm.GPIO_ODR] = control[5]      # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
                 else: # Invert bg color
-                    gpioa[0] = 255 - bg_buf[bg_ptr] # set data on port A
+                    gpioa[stm.GPIO_ODR] = 255 - bg_buf[bg_ptr] # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = 255 - bg_buf[bg_ptr + 1]  # set data on port A
+                    gpioa[stm.GPIO_ODR] = 255 - bg_buf[bg_ptr + 1]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = 255 - bg_buf[bg_ptr + 2]  # set data on port A
+                    gpioa[stm.GPIO_ODR] = 255 - bg_buf[bg_ptr + 2]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
             else:
                 if transparency == 0: # not transparent
-                    gpioa[0] = control[5]  # set data on port A
+                    gpioa[stm.GPIO_ODR] = control[0]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = control[6]  # set data on port A
+                    gpioa[stm.GPIO_ODR] = control[1]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = control[7]  # set data on port A
+                    gpioa[stm.GPIO_ODR] = control[2]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
                 elif transparency == 1: # Dim background
-                    gpioa[0] = bg_buf[bg_ptr] >> 1  # set data on port A
+                    gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr] >> 1  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = bg_buf[bg_ptr + 1] >> 1  # set data on port A
+                    gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr + 1] >> 1  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = bg_buf[bg_ptr + 2] >> 1  # set data on port A
+                    gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr + 2] >> 1  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
                 else: # Keep background
-                    gpioa[0] = bg_buf[bg_ptr] # set data on port A
+                    gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr] # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = bg_buf[bg_ptr + 1]  # set data on port A
+                    gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr + 1]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
 
-                    gpioa[0] = bg_buf[bg_ptr + 2]  # set data on port A
+                    gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr + 2]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
             mask >>= 1
@@ -688,8 +766,9 @@ class TFT:
 
         gpioam[0] = 0       # configure X1..X8 as Input
         gpiob[1] = RD       # set RD low. C/D still high
-        gpiob[0] = RD       # set RD high again
+        delay = 1
         mode = gpioa[stm.GPIO_IDR] ^ 0x20  # get data from port A and flip bit
+        gpiob[0] = RD       # set RD high again
 
         gpioam[0] = 0x5555  # configure X1..X8 as Output
 
@@ -700,7 +779,7 @@ class TFT:
         gpioa[stm.GPIO_ODR] = mode      # set data on port A
         gpiob[1] = WR       # set WR low. C/D still high
         gpiob[0] = WR       # set WR high again#
-# Set the address range for various draw copmmands and set the TFT for expecting data
+# the address range for various draw copmmands and set the TFT for expecting data
 #
     @staticmethod
     @micropython.viper        
@@ -1153,21 +1232,26 @@ class TFT:
     @micropython.viper        
     def tft_read_cmd_data(cmd: int, data: ptr8, size: int):
         gpioa = ptr8(stm.GPIOA)
-        gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
         gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
+        gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
+
         gpioa[stm.GPIO_ODR] = cmd  # set data on port A
         gpiob[1] = D_C | WR     # set C/D and WR low
         gpiob[0] = D_C | WR     # set C/D and WR high
-        gpioam[0] = 0  # Configure X1..X8 as Input
+
+        gpioam[0] = 0            # configure X1..X8 as Input
+
         for i in range(size):
             gpiob[1] = RD       # set RD low. C/D still high
-            gpiob[0] = RD       # set RD high again
+            delay = 1           # short delay required
             data[i] = gpioa[stm.GPIO_IDR]  # get data from port A
-        gpioam[0] = 0x5555  # configure X1..X8 as Output
+            gpiob[0] = RD       # set RD high again
+
+        gpioam[0] = 0x5555      # configure X1..X8 as Output
 #
 # Assembler version of send a command byte and read data from to the TFT controller
 # data must be a bytearray object, int is the size of the data.
-# The speed is about 120 ns/byte
+# The speed is about 130 ns/byte
 #
     @staticmethod
     @micropython.asm_thumb
@@ -1175,7 +1259,7 @@ class TFT:
 # r0: command, r1: ptr to data buffer, r2 is expected size in bytes
 # set up pointers to GPIO
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA base register ptr
 # r7: GPIOB BSSRL register ptr
         movwt(r6, stm.GPIOA) # target
         movwt(r7, stm.GPIOB)
@@ -1194,8 +1278,10 @@ class TFT:
 
         label(loopstart)
         strh(r5, [r7, 2])  # RD low
-        strh(r5, [r7, 0])  # RD high
+        nop()              # short delay
+        nop()
         ldrb(r4, [r6, stm.GPIO_IDR])  # load data   
+        strh(r5, [r7, 0])  # RD high
         strb(r4, [r1, 0])  # Store data
         add (r1, 1)  # advance data ptr
 

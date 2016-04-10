@@ -7,7 +7,7 @@ from struct import unpack
 
 from tft import *
 from font14 import font14
-from font8mono import font8mono
+from font6mono import font6mono
 from font36num_mono import font36num_mono
 from font7hex import font7hex
 
@@ -119,53 +119,69 @@ def main(v_flip = False, h_flip = False):
     mytft.clrSCR()
     mytft.backlight(99)
     
-    if False:    
+    if False:
+        mytft.setScrollArea(0, height, 0)
+        mytft.setTextPos(0, 0)
+        mytft.setTextStyle((240, 240, 240), None, 0, font6mono)
+        mytft.printString("Zeile 1")
+        input("Nü? ")
+        mytft.setScrollStart(100)
+        input("Und? ")
+        mytft.setTextPos(0, 0)
+        mytft.printString("Neue Zeile 1")
+        return
+        
+    if True:    
         s = "0123456789"
         mytft.setTextPos(0, 0)
-        mytft.setTextStyle((240, 240, 240), None, 0, font7hex)
+        mytft.setTextStyle((240, 240, 240), None, 0, font6mono)
         start = pyb.millis()
-        for i in range(100):
-            mytft.printString(s)
+        for j in range(36):
+            mytft.printString("Line {:4} ".format(j))
+            for i in range(7):
+                mytft.printString(s)
+        mytft.printString(">")
         print(pyb.elapsed_millis(start))
         return
     
-    if True:    
-        mytft.setTextPos(0, 0)
-        mytft.setTextStyle((255, 0, 0), None, 0, font7hex)
-        mytft.printString("0123456789" * 5)
-        mytft.setTextPos(0, 20)
-        mytft.printString("abcdefghijklmnopqrstuvwxyz" * 2)
-        pyb.delay(4000)
+    if True:  
+        if True:  
+            mytft.setTextPos(0, 0)
+            mytft.setTextStyle((255, 0, 0), None, 0, font7hex)
+            mytft.printString("0123456789" * 5)
+            mytft.setTextPos(0, 20)
+            mytft.printString("abcdefghijklmnopqrstuvwxyz" * 2)
+            pyb.delay(4000)
 
-        mytft.setTextPos(0, 0)
-        bg_buf = bytearray(font14.bits_horiz * font14.bits_vert * 3) # preallocate the buffer for transparency
-        mytft.setTextStyle((0, 255, 0), None, 2, font14, 1)
-        mytft.printString("ABCDE        NOPQRSTUVWXYZ", bg_buf)
-        mytft.setTextPos(0, 40)
-        mytft.setTextStyle((0, 255, 0), None, 0, font14, 1)
-        mytft.printString("abcdefghijklmnopqrstuvwxyz")
-        mytft.setTextPos(0, 80)
-        mytft.printString("0123456789!\"$%&/()=?")
-        pyb.delay(2000)
+            mytft.setTextPos(0, 0)
+            bg_buf = bytearray(font14.bits_horiz * font14.bits_vert * 3) # preallocate the buffer for transparency
+            mytft.setTextStyle((0, 255, 0), None, 2, font14, 1)
+            mytft.printString("ABCDE        NOPQRSTUVWXYZ", bg_buf)
+            mytft.setTextPos(0, 40)
+            mytft.setTextStyle((0, 255, 0), None, 0, font14, 1)
+            mytft.printString("abcdefghijklmnopqrstuvwxyz")
+            mytft.setTextPos(0, 80)
+            mytft.printString("0123456789!\"$%&/()=?")
+            pyb.delay(2000)
 
-        mytft.setColor((255,255,255))
-        mytft.fillClippedRectangle(200, 150, 300, 250)
-        mytft.drawClippedRectangle(0, 150, 100, 250)
-        pyb.delay(2000)
-        mytft.clrSCR()
-        cnt = 10
-        mytft.setTextStyle((255,255,255), 0, 0, font36num_mono)
-        while cnt >= 0:
-            mytft.setTextPos((width // 2) - 32, (height // 2) - 30)
-            mytft.printString("{:02}".format(cnt))
-            cnt -= 1
-            pyb.delay(1000)
+            mytft.setColor((255,255,255))
+            mytft.fillClippedRectangle(200, 150, 300, 250)
+            mytft.drawClippedRectangle(0, 150, 100, 250)
+            pyb.delay(2000)
+            mytft.clrSCR()
+            cnt = 10
+            mytft.setTextStyle((255,255,255), None, 0, font36num_mono)
+            while cnt >= 0:
+                mytft.setTextPos((width // 2) - 32, (height // 2) - 30)
+                mytft.printString("{:2}".format(cnt))
+                cnt -= 1
+                pyb.delay(1000)
+         
         gc.collect()
         mytft.clrSCR()
         buf = bytearray(5000)
         with open ("logo50.raw", "rb") as f:
             n = f.readinto(buf)
-
         for i in range(10):
             mytft.clrSCR()
             for cnt in range(50):

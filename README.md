@@ -216,12 +216,11 @@ displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8)
       in bitmap. Bitmap contains a single bit per pixel in chunks, stasting
       at a Byte boundary. The highest order bit in a byte is the first to be
       displayed. Size is the number of bits the bitmap. Control is a byte vector
-      with further parametsr controlling the behavior, coded here,
+      with further parameters controlling the behavior, coded here,
       since viper functions allow 4 arguments only.
-      Byte 0: Unused
-      Byte 1: Transparency mode. See setTextStyle for the value definition
-      Byte 2..4: Foreground color, which is used for a bit value of 1
-      Byte 5..7: Background color, which is used for a bit value of 0
+      Byte 0..2: Background color, which is used for a bit value of 1
+      Byte 3..5: Foreground color, which is used for a bit value of 0
+      Byte 6: Transparency mode. See setTextStyle for the value definition
       bg_buf must contain the frame buffer data for the pixel area chose. It is 
       used only when the respective transparency mode is chose. No size checking
       is performed. 
