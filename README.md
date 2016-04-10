@@ -179,6 +179,30 @@ printChar(c [, buffer])
       given by the char height.
       Before printing text, the font must be set with setTextStyle()
       
+printNewline()
+    # advance the string text position to the next line, where the line height is 
+    given by the selected font
+    
+printCR()
+    # set the text position to the start of the line
+    
+printClrEOL()
+    # Clear to the end of the text line by displaying an rectangle with the
+    text background color and the height given by the selected font.
+
+setScrollArea(top_fixed_area, vertical_scroll_area, bottom_fixed_area)
+    # define the area for line scrolling
+    top_fixed_area: Number of lines at the top which is not scrolled
+    vertical_scroll_area: Number of lines which will be scrolled
+    bottom_fixed_area: Number of lines at the bottom which is not scrolled
+
+setScrollStart(line)
+    # set the line which will be the one display first in the vertical scroll area
+    line: first logical line displayed
+    Screen coordinates are always physical coordinates.
+    
+
+      
 ```      
 ## Lower level functions ##
 ```
