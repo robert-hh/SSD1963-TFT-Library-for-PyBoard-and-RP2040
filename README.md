@@ -144,10 +144,12 @@ setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dumm
       If fgcolor is given, that color is used for the characters.
       If bgcolor is given, that color is used for the background for 
       For transparency the following values are valid:
-        0: no transparency. The BGcolor is used for char. background
+        0: no transparency. The bgcolor is used for char. background, fgcolor for the text
         1: 50% transparency. The previous background is 50% dimmed
         2: full transparency. The previous background is kept.
-        3: for the forground color, each background pixel value is inverted.
+        4: the existing background will be inverted
+        8: for the foreground color, each background pixel value is inverted.
+      The foregound settign can be combined with any of the background settings.
       Default are colors set by setColor() and setBGColor(). 
       FGcolor and BGcolor must be triples that can be converted to a 
       bytearray, e.g. tuples, lists or strings.

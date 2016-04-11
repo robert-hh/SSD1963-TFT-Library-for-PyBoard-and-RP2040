@@ -6,15 +6,16 @@ from uctypes import addressof
 from struct import unpack
 
 from tft import *
-from font14 import font14
+from dejavu14 import dejavu14
 from font6mono import font6mono
-from font36num_mono import font36num_mono
+from font8mono import font8mono
+from sevensegnumfont import sevensegnumfont
 from font7hex import font7hex
 
 
 sizetable = {
     "F" : 480,
-    "L" : 360, 
+    "L" : 360,
     "Q" : 272,
     "P" : 204,
     "D" : 408,
@@ -23,7 +24,7 @@ sizetable = {
 
 def odd_read(f, n):
     BLOCKSIZE = const(512) ## a sector, but may be 4 too
-    part = BLOCKSIZE - (f.tell() % BLOCKSIZE) 
+    part = BLOCKSIZE - (f.tell() % BLOCKSIZE)
     if part >= n or part == BLOCKSIZE:
         return f.read(n)
     else:
@@ -68,7 +69,7 @@ def displayfile(mytft, name, width, height):
                 if colors == 16:
                     b1 = bytearray(imgwidth)
                     b2 = bytearray(imgwidth)
-                    for row in range(height - skip - 1, -1, -1): 
+                    for row in range(height - skip - 1, -1, -1):
 # read in chunks, due to the bug in the SD card libraray, avoid reading
 # more than 511 bytes at once, at a performance penalty
 # required if the seek offset was not a multiple of 4
@@ -111,60 +112,71 @@ def displayfile(mytft, name, width, height):
                 mytft.drawBitmap(0, row, width, 1, b)
             mytft.fillRectangle(0, row, width - 1, height - 1)
         mytft.setColor(color)
-        
+
 def main(v_flip = False, h_flip = False):
 
     mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
     width, height = mytft.getScreensize()
     mytft.clrSCR()
     mytft.backlight(99)
-    
-    if True:    
+
+    if True:
         s = "0123456789"
+        font = font8mono
+        mytft.setTextStyle((240, 240, 240), None, 0, font)
+        bfa = height % font.bits_vert + font.bits_vert
+        vsa = height - bfa
+        mytft.setScrollArea(0, vsa, bfa)
+        mytft.setTextPos(0, height - font.bits_vert)
+        mytft.printString("           This is the non-scrolling area")
         mytft.setTextPos(0, 0)
-        mytft.setTextStyle((240, 240, 240), None, 0, font7hex)
-        start = pyb.millis()
-        for j in range(15):
+        for j in range(70):
             mytft.printString("Line {:4} ".format(j))
-            for i in range(5):
+            for i in range(4):
                 mytft.printString(s)
+            mytft.printCR()      # No, then CR
+            mytft.printNewline() # NL: advance to the next line
+            mytft.printClrEOL()  # clear to end of line
+            x,y = mytft.getTextPos()
+            mytft.setTextPos(0, height - font.bits_vert)
+            mytft.printString("Line {:4} ".format(j))
+            mytft.setTextPos(x,y)
         mytft.printString(">")
-        print(pyb.elapsed_millis(start))
-        return
-    
-    if True:  
-        if True:  
-            mytft.setTextPos(0, 0)
-            mytft.setTextStyle((255, 0, 0), None, 0, font7hex)
-            mytft.printString("0123456789" * 5)
-            mytft.setTextPos(0, 20)
-            mytft.printString("abcdefghijklmnopqrstuvwxyz" * 2)
-            pyb.delay(2000)
+        pyb.delay(4000)
+        mytft.clrSCR()
 
-            mytft.setTextPos(0, 0)
-            bg_buf = bytearray(font14.bits_horiz * font14.bits_vert * 3) # preallocate the buffer for transparency
-            mytft.setTextStyle((0, 255, 0), None, 2, font14, 1)
-            mytft.printString("ABCDE        NOPQRSTUVWXYZ", bg_buf)
-            mytft.setTextPos(0, 40)
-            mytft.setTextStyle((0, 255, 0), None, 0, font14, 1)
-            mytft.printString("abcdefghijklmnopqrstuvwxyz")
-            mytft.setTextPos(0, 80)
-            mytft.printString("0123456789!\"$%&/()=?")
-            pyb.delay(2000)
+    if True:
+        mytft.setTextPos(0, 0)
+        mytft.setTextStyle((255, 255, 255), None, 0, font7hex)
+        mytft.printString("0123456789" * 5)
+        mytft.setTextPos(0, 20)
+        mytft.printString("abcdefghijklmnopqrstuvwxyz" * 2)
+        pyb.delay(2000)
 
-            mytft.setColor((255,255,255))
-            mytft.fillClippedRectangle(200, 150, 300, 250)
-            mytft.drawClippedRectangle(0, 150, 100, 250)
-            pyb.delay(2000)
-            mytft.clrSCR()
-            cnt = 10
-            mytft.setTextStyle((255,255,255), None, 0, font36num_mono)
-            while cnt >= 0:
-                mytft.setTextPos((width // 2) - 32, (height // 2) - 30)
-                mytft.printString("{:2}".format(cnt))
-                cnt -= 1
-                pyb.delay(1000)
-         
+        mytft.setTextPos(0, 0)
+        bg_buf = bytearray(dejavu14.bits_horiz * dejavu14.bits_vert * 3) # preallocate the buffer for transparency
+        mytft.setTextStyle((0, 255, 0), None, 4, dejavu14)
+        mytft.printString("ABCDE        NOPQRSTUVWXYZ", bg_buf)
+        mytft.setTextPos(0, 40)
+        mytft.setTextStyle((0, 255, 0), None, 0, dejavu14)
+        mytft.printString("abcdefghijklmnopqrstuvwxyz")
+        mytft.setTextPos(0, 80)
+        mytft.printString("0123456789!\"$%&/()=?")
+        pyb.delay(2000)
+
+        mytft.setColor((255,255,255))
+        mytft.fillClippedRectangle(200, 150, 300, 250)
+        mytft.drawClippedRectangle(0, 150, 100, 250)
+        pyb.delay(2000)
+        mytft.clrSCR()
+        cnt = 10
+        mytft.setTextStyle((255,255,255), None, 0, sevensegnumfont)
+        while cnt >= 0:
+            mytft.setTextPos((width // 2) - 32, (height // 2) - 30)
+            mytft.printString("{:2}".format(cnt))
+            cnt -= 1
+            pyb.delay(1000)
+
         gc.collect()
         mytft.clrSCR()
         buf = bytearray(5000)
@@ -182,7 +194,7 @@ def main(v_flip = False, h_flip = False):
 #    files = os.listdir(".")
     files = "F0010.raw", "F0012.bmp", "F0013.data","F0011.raw"
 
-    mytft.setTextStyle((255, 255, 255), None, 3, font14)
+    mytft.setTextStyle((255, 255, 255), None, 10, dejavu14)
     while True:
         for name in files:
 #            name = files[pyb.rng() % len(files)]
@@ -190,6 +202,6 @@ def main(v_flip = False, h_flip = False):
             mytft.setTextPos(180, 230)
             mytft.printString(name, bg_buf)
             pyb.delay(6000)
-                
+
 main(v_flip = False, h_flip = False)
 

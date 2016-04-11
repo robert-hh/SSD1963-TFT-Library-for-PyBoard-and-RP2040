@@ -269,10 +269,7 @@ class TFT:
 # set backlight brightness
 #            
     def backlight(self, percent):
-        if percent < 0:
-            percent = 0
-        elif percent > 100:
-            percent = 100
+        percent = max(0, min(percent, 100))
         self.led_ch.pulse_width_percent(percent)  # set LED
 #
 # switch power on/off
@@ -334,15 +331,16 @@ class TFT:
 #
 # Get text position
 #
-    def getTextPos(self, x, y):
+    def getTextPos(self):
         return (self.text_x, self.text_y)
 #
 # Set Text Style
 #
     def setTextStyle(self, fgcolor = None, bgcolor = None, transparency = None, font = None, gap = None):
-        self.text_font = font 
+        if font != None:
+            self.text_font = font 
         if font:
-            self.text_rows, hor, nchar, first = font.get_properties() # 
+            self.text_rows, self.text_cols, nchar, first = font.get_properties() # 
         if transparency != None:
             self.transparency = transparency
         if gap != None:
@@ -375,6 +373,7 @@ class TFT:
         self.clrXY()
         self.fillSCR_AS(self.BGcolorvect, (self.disp_x_size + 1) * (self.disp_y_size + 1))
         self.text_x = self.text_y = self.scroll_start = 0
+        self.setScrollStart(0)
 #
 # Draw a line from x1, y1 to x2, y2 with the color set by setColor()
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -574,6 +573,9 @@ class TFT:
                     [(tfa >> 8) & 0xff, tfa & 0xff, 
                      (vsa >> 8) & 0xff, vsa & 0xff,
                      (bfa >> 8) & 0xff, bfa & 0xff]), 6)
+        self.scroll_fta = tfa
+        self.scroll_vsa = vsa
+        self.scroll_bfa = bfa
 #
 # set the line which is displayed first
 #
@@ -586,11 +588,13 @@ class TFT:
 #
     def printNewline(self):
         self.text_y += self.text_rows
-        if self.text_y >= self.text_height:
+        if (self.text_y + self.text_rows) > self.scroll_vsa: # does the line fit?
             self.text_y = 0
-            self.setScrollStart((self.scroll_start + self.text_rows) % self.text_height)
+            newline = self.text_rows
+            self.setScrollStart(newline)
         elif self.scroll_start > 0: # Scrolling has started
-            self.setScrollStart((self.scroll_start + self.text_rows) % self.text_height)
+            newline = (self.scroll_start + self.text_rows) % self.scroll_vsa
+            self.setScrollStart(newline)
 #
 # Carriage Return
 #
@@ -679,19 +683,7 @@ class TFT:
 #               gpiob[0] = D_C | WR     # set C/D and WR high
 
             if bits[bm_ptr] & mask:
-                if transparency != 3: # not invert
-                    gpioa[stm.GPIO_ODR] = control[3]     # set data on port A
-                    gpiob[1] = WR       # set WR low. C/D still high
-                    gpiob[0] = WR       # set WR high again
-
-                    gpioa[stm.GPIO_ODR] = control[4]      # set data on port A
-                    gpiob[1] = WR       # set WR low. C/D still high
-                    gpiob[0] = WR       # set WR high again
-
-                    gpioa[stm.GPIO_ODR] = control[5]      # set data on port A
-                    gpiob[1] = WR       # set WR low. C/D still high
-                    gpiob[0] = WR       # set WR high again
-                else: # Invert bg color
+                if transparency & 8: # Invert bg color as foreground
                     gpioa[stm.GPIO_ODR] = 255 - bg_buf[bg_ptr] # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
@@ -703,20 +695,20 @@ class TFT:
                     gpioa[stm.GPIO_ODR] = 255 - bg_buf[bg_ptr + 2]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
+                else: # not invert
+                    gpioa[stm.GPIO_ODR] = control[3]     # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[stm.GPIO_ODR] = control[4]      # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[stm.GPIO_ODR] = control[5]      # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
             else:
-                if transparency == 0: # not transparent
-                    gpioa[stm.GPIO_ODR] = control[0]  # set data on port A
-                    gpiob[1] = WR       # set WR low. C/D still high
-                    gpiob[0] = WR       # set WR high again
-
-                    gpioa[stm.GPIO_ODR] = control[1]  # set data on port A
-                    gpiob[1] = WR       # set WR low. C/D still high
-                    gpiob[0] = WR       # set WR high again
-
-                    gpioa[stm.GPIO_ODR] = control[2]  # set data on port A
-                    gpiob[1] = WR       # set WR low. C/D still high
-                    gpiob[0] = WR       # set WR high again
-                elif transparency == 1: # Dim background
+                if transparency & 1: # Dim background
                     gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr] >> 1  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
@@ -728,7 +720,7 @@ class TFT:
                     gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr + 2] >> 1  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
-                else: # Keep background
+                elif transparency & 2: # keep Background
                     gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr] # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
@@ -738,6 +730,30 @@ class TFT:
                     gpiob[0] = WR       # set WR high again
 
                     gpioa[stm.GPIO_ODR] = bg_buf[bg_ptr + 2]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+                elif transparency & 4: # invert Background
+                    gpioa[stm.GPIO_ODR] = 255 - bg_buf[bg_ptr] # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[stm.GPIO_ODR] = 255 - bg_buf[bg_ptr + 1]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[stm.GPIO_ODR] = 255 - bg_buf[bg_ptr + 2]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+                else: # not transparent
+                    gpioa[stm.GPIO_ODR] = control[0]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[stm.GPIO_ODR] = control[1]  # set data on port A
+                    gpiob[1] = WR       # set WR low. C/D still high
+                    gpiob[0] = WR       # set WR high again
+
+                    gpioa[stm.GPIO_ODR] = control[2]  # set data on port A
                     gpiob[1] = WR       # set WR low. C/D still high
                     gpiob[0] = WR       # set WR high again
             mask >>= 1
