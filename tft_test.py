@@ -8,27 +8,27 @@ from struct import unpack
 from tft import *
 from dejavu14 import dejavu14
 from font6mono import font6mono
-from font8mono import font8mono
+from dejavu10 import dejavu10
 from sevensegnumfont import sevensegnumfont
 from font7hex import font7hex
 
+DIM_BG  = const(1)  # dim background data for text
+KEEP_BG = const(2)  # keep background data for text
+INV_BG  = const(4)  # invert the background data for text
+INV_FG  = const(8)  # use the inverted background data for text color
 
-sizetable = {
-    "F" : 480,
-    "L" : 360,
-    "Q" : 272,
-    "P" : 204,
-    "D" : 408,
-    "R" : 180
-    }
-
-def odd_read(f, n):
-    BLOCKSIZE = const(512) ## a sector, but may be 4 too
-    part = BLOCKSIZE - (f.tell() % BLOCKSIZE)
-    if part >= n or part == BLOCKSIZE:
-        return f.read(n)
-    else:
-        return f.read(part) + f.read(n - part)
+# split read, due to the bug in the SD card library, avoid reading
+# more than 512 bytes at once, at a performance penalty
+# required if the actual file position is not a multiple of 4
+def split_read(f, buf, n):
+    BLOCKSIZE = const(512) ## a sector
+    mv = memoryview(buf)
+    bytes_read = 0
+    for i in range(0, n - BLOCKSIZE, BLOCKSIZE):
+        bytes_read += f.readinto(mv[i:i + BLOCKSIZE])
+    if bytes_read < n and (n - bytes_read) <= BLOCKSIZE:
+        bytes_read += f.readinto(mv[bytes_read:n])
+    return bytes_read
 
 
 def displayfile(mytft, name, width, height):
@@ -41,71 +41,60 @@ def displayfile(mytft, name, width, height):
         if len(parts) > 1:
             mode = parts[-1].lower()
         if mode == "raw": # raw 16 bit 565 format with swapped bytes
-            imgwidth = sizetable[name[0]]
-            b = bytearray(imgwidth * 2)
-            for row in range(height):
+            b = bytearray(width * 2)
+            imgheight = os.stat(name)[6] // (width * 2)
+            skip = (height - imgheight) // 2
+            if skip > 0:
+                mytft.fillRectangle(0, 0, width - 1, skip)
+            else:
+                skip = 0
+            for row in range(skip, height):
                 n = f.readinto(b)
                 if not n:
                     break
-                margin = (width - imgwidth) // 2
-                if margin: ## picure with less than frame
-                    mytft.drawHLine(0, row, margin)
-                    mytft.drawHLine(imgwidth + margin, row, margin)
-                mytft.drawBitmap(margin, row, imgwidth, 1, b, 1)
+                mytft.drawBitmap(0, row, width, 1, b, 1)
             mytft.fillRectangle(0, row, width - 1, height - 1)
         elif mode == "bmp":  # Windows bmp file
             BM, filesize, res0, offset = unpack("<hiii", f.read(14))
             hdrsize, imgwidth, imgheight, planes, colors = unpack("<iiihh", f.read(16))
-#            print (name, offset, imgwidth, imgheight)
             if colors in (16, 24) and imgwidth <= width and (imgwidth % 4) == 0: ## only 16 or 24 bit colors supported
                 bytes_per_pix = colors // 8
                 f.seek(offset)
-                hstep = imgwidth // bytes_per_pix
                 skip = ((height - imgheight) // 2)
                 if skip > 0:
                     mytft.fillRectangle(0, height - skip, width - 1, height - 1)
                 else:
                     skip = 0
                 if colors == 16:
-                    b1 = bytearray(imgwidth)
-                    b2 = bytearray(imgwidth)
+                    bsize = imgwidth * 2
+                    b = bytearray(bsize)
                     for row in range(height - skip - 1, -1, -1):
-# read in chunks, due to the bug in the SD card libraray, avoid reading
-# more than 511 bytes at once, at a performance penalty
-# required if the seek offset was not a multiple of 4
-                        n1 = f.readinto(b1)
-                        n2 = f.readinto(b2)
-                        if not n2:
+                        n = split_read(f, b, bsize)
+                        if n != bsize:
                             break
-                        mytft.swapbytes(b1, n1)
-                        mytft.swapbytes(b2, n2)
+                        mytft.swapbytes(b, bsize)
                         mytft.setXY(0, row, imgwidth - 1, row)
-                        mytft.displaySCR565_AS(b1, hstep)
-                        mytft.displaySCR565_AS(b2, hstep)
+                        mytft.displaySCR565_AS(b, imgwidth)
                 else:
-                    b1 = bytearray(imgwidth)
-                    b2 = bytearray(imgwidth)
-                    b3 = bytearray(imgwidth)
+                    bsize = imgwidth * 3
+                    b = bytearray(bsize)
                     for row in range(height - skip - 1, -1, -1):
-# read in chunks, due to the bug in the SD card libraray, avoid reading
-# more than 511 bytes at once, at a performance penalty
-# required if the seek offset was not a multiple of 4
-                        n1 = f.readinto(b1)
-                        n2 = f.readinto(b2)
-                        n3 = f.readinto(b3)
-                        if not n3:
+                        n = split_read(f, b, bsize)
+                        if n != bsize:
                             break
-                        mytft.swapcolors(b1, n1)
-                        mytft.swapcolors(b2, n2)
-                        mytft.swapcolors(b3, n3)
+                        mytft.swapcolors(b, bsize)
                         mytft.setXY(0, row, imgwidth - 1, row)
-                        mytft.displaySCR_AS(b1, hstep)
-                        mytft.displaySCR_AS(b2, hstep)
-                        mytft.displaySCR_AS(b3, hstep)
+                        mytft.displaySCR_AS(b, imgwidth)
                 mytft.fillRectangle(0, 0, width - 1, row)
-        elif mode == "data": # raw 24 bit format with rgb data (gimp type data)
+        elif mode == "data": # raw 24 bit format with rgb data (gimp export type data)
             b = bytearray(width * 3)
-            for row in range(height):
+            imgheight = os.stat(name)[6] // (width * 3)
+            skip = (height - imgheight) // 2
+            if skip > 0:
+                mytft.fillRectangle(0, 0, width - 1, skip)
+            else:
+                skip = 0
+            for row in range(skip, height):
                 n = f.readinto(b)
                 if not n:
                     break
@@ -117,13 +106,39 @@ def main(v_flip = False, h_flip = False):
 
     mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
     width, height = mytft.getScreensize()
-    mytft.clrSCR()
-    mytft.backlight(99)
+    mytft.setXY(0, 0, 479, 815) # manual clear
+    mytft.fillSCR_AS(mytft.BGcolorvect, 480 * 816)
+
+    mytft.backlight(100)
+    bg_buf = bytearray(dejavu14.bits_horiz * dejavu14.bits_vert * 3) # preallocate the buffer for transparency
+    
+    if True:
+        mytft.setTextPos(0, height * 0)
+        mytft.setTextStyle((255, 0, 0), None, 0, font7hex)
+        mytft.printString("This is text on Page 1")
+        
+        mytft.setTextPos(0, height * 1)
+        mytft.setTextStyle((0, 255, 0), None, 0, font7hex)
+        mytft.printString("This is text on Page 2")
+        
+        mytft.setTextPos(0, height * 2)
+        mytft.setTextStyle((0, 0, 255), None, 0, font7hex)
+        mytft.printString("This is text on Page 3")
+        
+        for i in range(3):
+            mytft.setScrollStart(height * 0)
+            pyb.delay(1000)
+            mytft.setScrollStart(height * 1)
+            pyb.delay(1000)
+            mytft.setScrollStart(height * 2)
+            pyb.delay(1000)
+        mytft.setScrollStart(height * 0)
+        
 
     if True:
         s = "0123456789"
-        font = font8mono
-        mytft.setTextStyle((240, 240, 240), None, 0, font)
+        font = dejavu10
+        mytft.setTextStyle((240, 240, 240), None, 0, font, 1)
         bfa = height % font.bits_vert + font.bits_vert
         vsa = height - bfa
         mytft.setScrollArea(0, vsa, bfa)
@@ -132,7 +147,7 @@ def main(v_flip = False, h_flip = False):
         mytft.setTextPos(0, 0)
         for j in range(70):
             mytft.printString("Line {:4} ".format(j))
-            for i in range(4):
+            for i in range(3):
                 mytft.printString(s)
             mytft.printCR()      # No, then CR
             mytft.printNewline() # NL: advance to the next line
@@ -142,10 +157,10 @@ def main(v_flip = False, h_flip = False):
             mytft.printString("Line {:4} ".format(j))
             mytft.setTextPos(x,y)
         mytft.printString(">")
-        pyb.delay(4000)
-        mytft.clrSCR()
+        pyb.delay(2000)
 
     if True:
+        mytft.clrSCR()
         mytft.setTextPos(0, 0)
         mytft.setTextStyle((255, 255, 255), None, 0, font7hex)
         mytft.printString("0123456789" * 5)
@@ -154,8 +169,7 @@ def main(v_flip = False, h_flip = False):
         pyb.delay(2000)
 
         mytft.setTextPos(0, 0)
-        bg_buf = bytearray(dejavu14.bits_horiz * dejavu14.bits_vert * 3) # preallocate the buffer for transparency
-        mytft.setTextStyle((0, 255, 0), None, 4, dejavu14)
+        mytft.setTextStyle((0, 255, 0), None, KEEP_BG, dejavu14)
         mytft.printString("ABCDE        NOPQRSTUVWXYZ", bg_buf)
         mytft.setTextPos(0, 40)
         mytft.setTextStyle((0, 255, 0), None, 0, dejavu14)
@@ -189,12 +203,9 @@ def main(v_flip = False, h_flip = False):
                 y = pyb.rng() % (height - 51)
                 mytft.drawBitmap(x, y, 50, 50, buf, 1)
             pyb.delay(1000)
+    files = "F0012.bmp", "F0010.raw", "F0013.data","F0011.raw"
 
-#    os.chdir("raw_480x800")
-#    files = os.listdir(".")
-    files = "F0010.raw", "F0012.bmp", "F0013.data","F0011.raw"
-
-    mytft.setTextStyle((255, 255, 255), None, 10, dejavu14)
+    mytft.setTextStyle((255, 255, 255), None, KEEP_BG | INV_FG, dejavu14)
     while True:
         for name in files:
 #            name = files[pyb.rng() % len(files)]
