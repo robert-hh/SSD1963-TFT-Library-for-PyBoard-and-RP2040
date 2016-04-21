@@ -4,7 +4,7 @@
 import os, gc, pyb
 from struct import unpack
 
-import tft_new as tft
+import tft
 from dejavu14 import dejavu14
 from font6mono import font6mono
 from dejavu10 import dejavu10

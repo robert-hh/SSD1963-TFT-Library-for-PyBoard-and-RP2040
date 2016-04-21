@@ -562,8 +562,8 @@ class TFT:
         self.text_width, self.text_height = self.getScreensize()
         self.text_x = x
         self.text_y = y
-        if clip and clip < self.text_width:
-            self.text_width = clip
+        if clip and (self.text_x + clip) < self.text_width:
+            self.text_width = self.text_x + clip
         self.text_scroll = scroll
 #
 # Get text position

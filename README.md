@@ -136,8 +136,8 @@ setTextPos(x, y[, clip = 0][, scroll = True])
     # Set the starting position for the following calls of
       printString() and printChar() to x, y. x, y is the position of the leftside top pixel 
       of the first character using the font given in font.
-      If the value of clip is set and lower than the width of the screen, text will
-      be clipped at that absolute position. Th edefault is the screen width.
+      clip defines, if set, the maximal length which will be printed. The default is the 
+      screen width.
       scroll tells, whether text will flow over to a next line if longer than the 
       screen width or teh width given by clip. The default is True.
       
