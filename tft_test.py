@@ -1,11 +1,10 @@
 #
 # Some sample code
 #
-import os, gc
-from uctypes import addressof
+import os, gc, pyb
 from struct import unpack
 
-from tft import *
+import tft_new as tft
 from dejavu14 import dejavu14
 from font6mono import font6mono
 from dejavu10 import dejavu10
@@ -72,9 +71,8 @@ def displayfile(mytft, name, width, height):
                         n = split_read(f, b, bsize)
                         if n != bsize:
                             break
-                        mytft.swapbytes(b, bsize)
-                        mytft.setXY(0, row, imgwidth - 1, row)
-                        mytft.displaySCR565_AS(b, imgwidth)
+                        tft.TFT_io.swapbytes(b, bsize)
+                        mytft.drawBitmap(0, row, imgwidth, 1, b, 1)
                 else:
                     bsize = imgwidth * 3
                     b = bytearray(bsize)
@@ -82,9 +80,8 @@ def displayfile(mytft, name, width, height):
                         n = split_read(f, b, bsize)
                         if n != bsize:
                             break
-                        mytft.swapcolors(b, bsize)
-                        mytft.setXY(0, row, imgwidth - 1, row)
-                        mytft.displaySCR_AS(b, imgwidth)
+                        tft.TFT_io.swapcolors(b, bsize)
+                        mytft.drawBitmap(0, row, imgwidth, 1, b, 0)
                 mytft.fillRectangle(0, 0, width - 1, row)
         elif mode == "data": # raw 24 bit format with rgb data (gimp export type data)
             b = bytearray(width * 3)
@@ -104,13 +101,21 @@ def displayfile(mytft, name, width, height):
 
 def main(v_flip = False, h_flip = False):
 
-    mytft = TFT("SSD1963", "LB04301", LANDSCAPE, v_flip, h_flip)
+    mytft = tft.TFT("SSD1963", "LB04301", tft.LANDSCAPE, v_flip, h_flip)
     width, height = mytft.getScreensize()
-    mytft.setXY(0, 0, 479, 815) # manual clear
-    mytft.fillSCR_AS(mytft.BGcolorvect, 480 * 816)
+    mytft.setXY(0, 0, 479, 815) # manual clear of the pyhsical frame buffer
+    tft.TFT_io.fillSCR_AS(mytft.BGcolorvect, 480 * 816)
 
     mytft.backlight(100)
     bg_buf = bytearray(dejavu14.bits_horiz * dejavu14.bits_vert * 3) # preallocate the buffer for transparency
+    
+    font = dejavu10
+    mytft.setTextStyle((240, 240, 240), None, 0, font, 1)
+    mytft.setTextPos(0, 0, 200, False)
+    print(mytft.printString("This text wil be cut after some characters"))
+    mytft.drawHLine(0, 20, 200)
+    pyb.delay(4000)
+
     
     if True:
         mytft.setTextPos(0, height * 0)
@@ -203,7 +208,7 @@ def main(v_flip = False, h_flip = False):
                 y = pyb.rng() % (height - 51)
                 mytft.drawBitmap(x, y, 50, 50, buf, 1)
             pyb.delay(1000)
-    files = "F0012.bmp", "F0010.raw", "F0013.data","F0011.raw"
+    files = "F0012.bmp", "F0010.raw", "F0013.data","F0020.bmp"
 
     mytft.setTextStyle((255, 255, 255), None, KEEP_BG | INV_FG, dejavu14)
     while True:

@@ -104,8 +104,9 @@ drawVLine(x, y, len)
 drawRectangle(x1, y1, x2, y2)
     # draw a rectangle from x1, y1, to x2, y2. The width of the line is 1 pixel.
 
-fillRectangle(x1, y1, x2, y2)
-    # fill a rectangle from x1, y1, to x2, y2 with the foreground color.
+fillRectangle(x1, y1, x2, y2[, color])
+    # fill a rectangle from x1, y1, to x2, y2 with the foreground color or with 
+      the color given in the optional argument color.
 
 drawClippedRectangle(x1, y1, x2, y2)
     # draw a rectangle with canted edges from x1, y1, to x2, y2. The width of the line is 1 pixel.
@@ -131,10 +132,14 @@ drawBitmap(x, y, width, height, data, mode)
           The total size of data must be width * height * 2.
       No type checking of the data is performed.
 
-setTextPos(x, y)
+setTextPos(x, y[, clip = 0][, scroll = True])
     # Set the starting position for the following calls of
       printString() and printChar() to x, y. x, y is the position of the leftside top pixel 
       of the first character using the font given in font.
+      If the value of clip is set and lower than the width of the screen, text will
+      be clipped at that absolute position. Th edefault is the screen width.
+      scroll tells, whether text will flow over to a next line if longer than the 
+      screen width or teh width given by clip. The default is True.
       
 getTextPos()
     # return a tuple with the actual x,y values of the text postion for the next char printed
@@ -208,36 +213,30 @@ setScrollStart(line)
 ```      
 ## Lower level functions ##
 ```
-setXY(x1, y1, x2, y2)
+TFT_io.setXY(x1, y1, x2, y2)
     # set the region for the bulk transfer functions fillSCR() and displaySCRxx()
     
 clrXY()
     # set the bulk transfer region back to the full screen size
     
-fillSCR(data, size)
-fillSCR_AS(data, size)
+TFT_io.fillSCR_AS(data, size)
     # fill the region set with setXY() or clrXY() with the pixel value given
       in data. Size is the number of pixels, data must be a bytearray object
-      of three bytes length with the red-green-blue values. The version with
-      the AS suffix uses inline-assembler.
+      of three bytes length with the red-green-blue values.
           
-displaySCR(data, size)
-displaySCR_AS(data, size)
+TFT_io.displaySCR_AS(data, size)
     # fill the region set with setXY() or clrXY() with the pixel values given
       in data. Size is the number of pixels, data must be a bytearray object
-      of 3 * size length with the red-green-blue values per pixel. The
-      version with the AS suffix uses inline-assembler.
+      of 3 * size length with the red-green-blue values per pixel.
     
-          
-displaySCR565(data, size)
-displaySCR565_AS(data, size)
+TFT_io.displaySCR565_AS(data, size)
     # fill the region set with setXY() or clrXY() with the pixel values given
       in data. Size is the number of pixels, data must be a bytearray object
       of 2 * size length with the 16 bit packed red-green-blue values per pixel.
       The color pattern per word is rrrrrggggggbbbbb, with rrrrr in the lower 
-      (=first) byte. The version with the AS suffix uses inline-assembler.
+      (=first) byte. 
           
-displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8)
+TFT_io.displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8)
     # fill the region set with setXY() or clrXY() with the pixel values given
       in bitmap. Bitmap contains a single bit per pixel in chunks, stasting
       at a Byte boundary. The highest order bit in a byte is the first to be
@@ -251,8 +250,8 @@ displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8)
       used only when the respective transparency mode is chose. No size checking
       is performed. 
           
-tft_cmd_data(cmd, data, size)
-tft_cmd_data_AS(cmd, data, size)
+TFT_io.tft_cmd_data(cmd, data, size)
+TFT_io.tft_cmd_data_AS(cmd, data, size)
     # Send a command byte and data to the controller. cmd is a single integer
       with the command, data a bytearray of size length with the command payload.
       The version with the AS suffix uses inline-assembler.
@@ -262,17 +261,14 @@ tft_cmd_data_AS(cmd, data, size)
       This function may also be used for other displays like the Character based
       2x20 or 4x20 displays, which use the 8080-type interface.
 
-tft_cmd(cmd)
+TFT_io.tft_cmd(cmd)
     # send a single command byte to the tft.
       
-tft_data(cmd, data, size)
-tft_data_AS(cmd, data, size)
+TFT_io.tft_data_AS(cmd, data, size)
     # Send data to the tft. Size is the number of bytes, data must be 
-      a bytearray object size length. The version with the AS suffix uses
-      inline-assembler.
+      a bytearray object size length.
 
-tft_read_cmd_data(cmd, data, size)
-tft_read_cmd_data_AS(cmd, data, size)
+TFT_io.tft_read_cmd_data_AS(cmd, data, size)
     # Send a command to the tft and get the response back. cmd is the command byte, 
       data a bytearray of size length which will receive the data.
       
@@ -308,6 +304,13 @@ get_char(c)
     vert: The vertical size of the character
     hor:  the horizontal size of the character
     The total number of bits in the character bitmap is n = vert*hor.
+    
+get_properties()
+    Return a tuple with the basi properties of the font. These are:
+    bits_vert: the number of vertical pixels
+    bits_hor: the largest number of horizontal pixels. For monospaced fonts, this applies to all characters
+    nchar: the number of characters in the font set
+    firstchar: the ordinal number of the first character in the font set
     
 ```
 #Files#
