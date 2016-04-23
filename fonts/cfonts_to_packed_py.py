@@ -113,10 +113,10 @@ def implode(buf, size):
 
 def writestart(outfile, name):
     print('{}: header found'.format(name))
-    outfile.write('_{} = '.format(name))
+    outfile.write('_{} = ('.format(name))
     
 def write_index(outfile, name, index):
-    outfile.write("_{:}_index = ".format(name))
+    outfile.write("_{:}_index = (".format(name))
     count = 0
     for val in index:
         if count == 0:
@@ -125,10 +125,10 @@ def write_index(outfile, name, index):
         count += 1
         count %= 8
         if count == 0:
-            outfile.write("'\\\n")
+            outfile.write("'\n")
     if count > 0:
         outfile.write("'")
-    outfile.write("\n\n")
+    outfile.write(")\n\n")
 
 def process(infile, outfile, sourcefile):
     chars_processed = 0
@@ -209,9 +209,9 @@ def process(infile, outfile, sourcefile):
                         outfile.write("\\x{:02x}".format(res[i]))
                     index.append(offset)
                     chars_processed += 1
-                    outfile.write("'\\\n") # each char line ends with \
+                    outfile.write("'\n") # each char line ends with \
     if phase == 4 :
-        outfile.write("\n")
+        outfile.write(")\n")
         write_index(outfile, name, index)
         outfile.write('{:} = TFTfont.TFTFont(_{:}, _{:}_index, {}, {}, {})\n\n'.format(name, name, name, vert, horiz, chars_processed))
         print('{}: Characters in font: {} width: {} height: {}'.format(name, chars_processed, horiz, vert))
