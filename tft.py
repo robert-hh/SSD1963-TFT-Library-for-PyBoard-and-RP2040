@@ -21,23 +21,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# Class supporting TFT LC-displays with a parallel Interface
-# First example: Controller SSD1963
-# It uses X1..X8 for data and Y3, Y9, Y10, Y11 and Y12 for control signals.
-# The minimal connection just for writes is X1..X8 for data, Y9 for /Reset. Y11 for /WR and Y12 for /RS
-# Then LED and /CS must be hard tied to Vcc and GND, and /RD is not used.
-#
-#  Some parts of the software are a port of code provided by Rinky-Dink Electronics, Henning Karlsen,
-#  with the following copyright notice:
+# Some parts of the software are a port of code provided by Rinky-Dink Electronics, Henning Karlsen,
+# with the following copyright notice:
+# 
 ## Copyright (C)2015 Rinky-Dink Electronics, Henning Karlsen. All right reserved
-##  This library is free software; you can redistribute it and/or
-##  modify it under the terms of the CC BY-NC-SA 3.0 license.
-##  Please see the included documents for further information.
+## This library is free software; you can redistribute it and/or
+## modify it under the terms of the CC BY-NC-SA 3.0 license.
+## Please see the included documents for further information.
+#
+# Class supporting TFT LC-displays with a parallel Interface
+# First example: Controller SSD1963 with a 4.3" or 7" display
+#
+# The minimal connection is:
+# X1..X8 for data, Y9 for /Reset, Y10 for /RD, Y11 for /WR and Y12 for /RS
+# Then LED must be hard tied to Vcc and /CS to GND.
 #
 
 import pyb, stm
 from uctypes import addressof
-from TFT_io import TFT_io
+import TFT_io
 
 # define constants
 #
@@ -90,9 +92,13 @@ class TFT:
 # this may have to be moved to the controller specific section
         if orientation == PORTRAIT:
             self.setXY = TFT_io.setXY_P
+            self.drawPixel = TFT_io.drawPixel_P
         else:
             self.setXY = TFT_io.setXY_L
-# ----------        
+            self.drawPixel = TFT_io.drawPixel_L
+        self.swapbytes = TFT_io.swapbytes
+        self.swapcolors = TFT_io.swapcolors
+#  ----------        
         for pin_name in ["X1", "X2", "X3", "X4", "X5", "X6", "X7", "X8", 
                    "Y10", "Y11", "Y12"]:
             pin = pyb.Pin(pin_name, pyb.Pin.OUT_PP) # set as output
@@ -322,12 +328,12 @@ class TFT:
     def getBGColor(self):
         return self.BGcolor
 #
-# Draw a single pixel at location x, y
+# Draw a single pixel at location x, y with color 
 # Rather slow at 40µs/Pixel
 #        
-    def drawPixel(self, x, y):
+    def drawPixel_py(self, x, y, color):
         self.setXY(x, y, x, y)
-        TFT_io.displaySCR_AS(self.colorvect, 1)  # 
+        TFT_io.displaySCR_AS(color, 1)  # 
 #
 # clear screen, set it to BG color.
 #             
@@ -354,13 +360,14 @@ class TFT:
         elif x1 == x2:
             self.drawVLine(x1, y1, y2 - y1 + 1)
         else:
+            colorvect = self.colorvect
             dx, xstep  = (x2 - x1, 1) if x2 > x1 else (x1 - x2, -1)
             dy, ystep  = (y2 - y1, 1) if y2 > y1 else (y1 - y2, -1)
             col, row = x1, y1
             if dx < dy:
                 t = - (dy >> 1)
                 while True:
-                    self.drawPixel(col, row)
+                    self.drawPixel(col, row, colorvect)
                     if row == y2:
                         return
                     row += ystep
@@ -371,7 +378,7 @@ class TFT:
             else:
                 t = - (dx >> 1)
                 while True:
-                    self.drawPixel(col, row)
+                    self.drawPixel(col, row, colorvect)
                     if col == x2:
                         return
                     col += xstep
@@ -416,7 +423,7 @@ class TFT:
 # Fill rectangle
 # Almost straight port from the UTFT Library at Rinky-Dink Electronics
 #
-    def fillRectangle(self, x1, y1, x2, y2, color = None):
+    def fillRectangle(self, x1, y1, x2, y2, color=None):
         if x1 > x2:
             t = x1; x1 = x2; x2 = t
         if y1 > y2:
@@ -437,14 +444,15 @@ class TFT:
         if y1 > y2:
             t = y1; y1 = y2; y2 = t
         if (x2-x1) > 4 and (y2-y1) > 4:
-            self.drawPixel(x1 + 2,y1 + 1)
-            self.drawPixel(x1 + 1,y1 + 2)
-            self.drawPixel(x2 - 2,y1 + 1)
-            self.drawPixel(x2 - 1,y1 + 2)
-            self.drawPixel(x1 + 2,y2 - 1)
-            self.drawPixel(x1 + 1,y2 - 2)
-            self.drawPixel(x2 - 2,y2 - 1)
-            self.drawPixel(x2 - 1,y2 - 2)
+            colorvect = self.colorvect
+            self.drawPixel(x1 + 2,y1 + 1, colorvect)
+            self.drawPixel(x1 + 1,y1 + 2, colorvect)
+            self.drawPixel(x2 - 2,y1 + 1, colorvect)
+            self.drawPixel(x2 - 1,y1 + 2, colorvect)
+            self.drawPixel(x1 + 2,y2 - 1, colorvect)
+            self.drawPixel(x1 + 1,y2 - 2, colorvect)
+            self.drawPixel(x2 - 2,y2 - 1, colorvect)
+            self.drawPixel(x2 - 1,y2 - 2, colorvect)
             self.drawHLine(x1 + 3, y1, x2 - x1 - 5)
             self.drawHLine(x1 + 3, y2, x2 - x1 - 5)
             self.drawVLine(x1, y1 + 3, y2 - y1 - 5)
@@ -477,6 +485,8 @@ class TFT:
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 #
     def drawCircle(self, x, y, radius):
+
+        colorvect = self.colorvect
     
         f = 1 - radius
         ddF_x = 1
@@ -484,10 +494,10 @@ class TFT:
         x1 = 0
         y1 = radius
 
-        self.drawPixel(x, y + radius)
-        self.drawPixel(x, y - radius)
-        self.drawPixel(x + radius, y)
-        self.drawPixel(x - radius, y)
+        self.drawPixel(x, y + radius, colorvect)
+        self.drawPixel(x, y - radius, colorvect)
+        self.drawPixel(x + radius, y, colorvect)
+        self.drawPixel(x - radius, y, colorvect)
 
         while x1 < y1:
             if f >= 0:
@@ -497,14 +507,14 @@ class TFT:
             x1 += 1
             ddF_x += 2
             f += ddF_x
-            self.drawPixel(x + x1, y + y1)
-            self.drawPixel(x - x1, y + y1)
-            self.drawPixel(x + x1, y - y1)
-            self.drawPixel(x - x1, y - y1)
-            self.drawPixel(x + y1, y + x1)
-            self.drawPixel(x - y1, y + x1)
-            self.drawPixel(x + y1, y - x1)
-            self.drawPixel(x - y1, y - x1)
+            self.drawPixel(x + x1, y + y1, colorvect)
+            self.drawPixel(x - x1, y + y1, colorvect)
+            self.drawPixel(x + x1, y - y1, colorvect)
+            self.drawPixel(x - x1, y - y1, colorvect)
+            self.drawPixel(x + y1, y + x1, colorvect)
+            self.drawPixel(x - y1, y + x1, colorvect)
+            self.drawPixel(x + y1, y - x1, colorvect)
+            self.drawPixel(x - y1, y - x1, colorvect)
 #
 # fill a circle at x, y with radius
 # Straight port from the UTFT Library at Rinky-Dink Electronics
@@ -517,8 +527,8 @@ class TFT:
             y_square = y1 * y1
             for x1 in range (-(radius * 2), 1):
                 if x1*x1+y_square <= r_square: 
-                    x1i = x1//2
-                    y1i = y1//2
+                    x1i = x1 // 2
+                    y1i = y1 // 2
                     self.drawHLine(x + x1i, y + y1i, 2 * (-x1i))
                     self.drawHLine(x + x1i, y - y1i, 2 * (-x1i))
                     break;
@@ -573,28 +583,28 @@ class TFT:
 #
 # Set Text Style
 #
-    def setTextStyle(self, fgcolor = None, bgcolor = None, transparency = None, font = None, gap = None):
-        if font != None:
+    def setTextStyle(self, fgcolor=None, bgcolor=None, transparency=None, font=None, gap=None):
+        if font is not None:
             self.text_font = font 
         if font:
             self.text_rows, self.text_cols, nchar, first = font.get_properties() # 
-        if transparency != None:
+        if transparency is not None:
             self.transparency = transparency
-        if gap != None:
+        if gap is not None:
             self.text_gap = gap
         self.text_color = bytearray(0)
-        if bgcolor != None:
+        if bgcolor is not None:
             self.text_color += bytearray(bgcolor)
         else:
             self.text_color += self.BGcolorvect
-        if fgcolor != None:
+        if fgcolor is not None:
             self.text_color += bytearray(fgcolor)
         else: 
             self.text_color += self.colorvect
-        if transparency != None:
+        if transparency is not None:
             self.transparency = transparency
         self.text_color  += bytearray([self.transparency])
-        if gap != None:
+        if gap is not None:
             self.text_gap = gap
 #
 # Check, if a new line is to be opened
@@ -624,7 +634,7 @@ class TFT:
 #
 # Print string s, returning the length of the printed string in pixels
 # 
-    def printString(self, s, bg_buf = None):
+    def printString(self, s, bg_buf=None):
         len = 0
         for c in s:
             cols = self.printChar(c, bg_buf)
@@ -635,7 +645,7 @@ class TFT:
 #
 # Print string c using the given char bitmap at location x, y, returning the width of the printed char in pixels
 # 
-    def printChar(self, c, bg_buf = None):
+    def printChar(self, c, bg_buf=None):
 # get the charactes pixel bitmap and dimensions
         if self.text_font: 
             fontptr, rows, cols = self.text_font.get_ch(ord(c))

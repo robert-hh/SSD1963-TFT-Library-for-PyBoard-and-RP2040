@@ -10,7 +10,7 @@ A Python class for controlling a graphical display with a SSD1963 controller and
 - Y11 for /WR
 - Y12 for C/D
 
-If you only write to the display, RD (Y10) may be left open. Optionally, the follwing lines can be used:
+If you only write to the display's frame buffer, RD (Y10) may be left open, but then the transparency modes of printChar() do not work any more. Optionally, the follwing lines can be used:
 
 - X3 for LED
 - X4 for TFT POWER
@@ -20,10 +20,10 @@ LED may also be controlled by one the SSD1963's GPIO's. But that requires resold
 
 At the moment, the code is a basic package. I have a two TFTs here, so I cannot test a lot. The actual state is working with a 480x272 and a 800x480 TFT in landscape and portrait mode. There is no principal limitation in size and mode, as long as the 1215k frame buffer of the SSD1963 fits. I just have to figure out how to set the TFT's configuration and make a smooth interface for that.
 
-Since the number of port lines on Pyboard is limited, I use the 8 bit interface. With X1 to x8, these are nicely available at GPIO port A0..A7 in the right order - intentionally, I assume. For speed, the lower level functions are coded as viper or assembler functions. Both variants are supplied. Obviously, the Assembler versions are little bit faster, at the cost of LOC. The total advantage of using assembler may be limited. The assembler functions need 220ns to 260ns to send the three bytes of a display pixel, in contrast to the about 10 µs needed to call this function.
+Since the number of port lines on Pyboard is limited, I use the 8 bit interface. With X1 to x8, these are nicely available at GPIO port A0..A7 in the right order - intentionally, I assume. For speed, the lower level functions are coded as viper or assembler functions. Obviously, the Assembler versions are little bit faster, at the cost of LOC. The total advantage of using assembler may be limited. The assembler functions need 220ns to 260ns to send the three bytes of a display pixel, in contrast to the about 4 µs needed to call this function.
 On the upside of this 8 bit interface choice is, that you can supply up to 24 bit of color data, in contrast to the 16 bit when using the 16 bit interface.
 
-In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 30ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 250 to 350ms, depending on the speed of the SD card, the same for a 800x480 bitmap takes 500 to 700ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 40µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
+In total, the speed is reasonable. Clearing the 480x272 display (= filling it with a fixed color) takes about 25ms. Filling it with varying patterns takes about 40 ms. Reading a 480x272 sized bitmap from a file and showing it takes about 250 to 350ms, depending on the speed of the SD card, the same for a 800x480 bitmap takes 500 to 700ms. Most of that time is needed for reading the file. Drawing a horizontal or vertical line takes about 250µs. Since most of the time is needed for set-up of the function, the length of the line does not really matter. Drawing a single Pixel at a certain coordinate takes 9µs, in contrast to the 250ns/Pixel in bulk transfers, used e.g. by clearSCR() or fillRectangle().
 
 #Class TFT#
 ##High level functions##
@@ -87,8 +87,9 @@ power(Switch);
     # Switch the power of the TFT on (Switch == True) or off (Switch = False)
       After switching on, the init process has to be repeated
 
-drawPixel(x, y)
-    # set a pixel at position x, y with the foreground color
+drawPixel(x, y, color)
+    # set a pixel at position x, y with the color. Coler mus be a bytearray or bytes object
+      of 3 bytes length with the color setting for red, green and blue.
 
 drawLine(x1, y2, x2, y2)
     # draw a line from x1, y1 to x2, y2. If the line is horizontal or vertical, 
@@ -213,7 +214,7 @@ setScrollStart(line)
 ```      
 ## Lower level functions ##
 ```
-TFT_io.setXY(x1, y1, x2, y2)
+setXY(x1, y1, x2, y2)
     # set the region for the bulk transfer functions fillSCR() and displaySCRxx()
     
 clrXY()

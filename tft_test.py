@@ -4,7 +4,7 @@
 import os, gc, pyb
 from struct import unpack
 
-import tft
+import tft 
 from dejavu14 import dejavu14
 from font6mono import font6mono
 from dejavu10 import dejavu10
@@ -108,13 +108,32 @@ def main(v_flip = False, h_flip = False):
 
     mytft.backlight(100)
     bg_buf = bytearray(dejavu14.bits_horiz * dejavu14.bits_vert * 3) # preallocate the buffer for transparency
+
+    if True:
+        drawpixel = mytft.drawPixel
+        color = bytearray((0, 255, 0))
+        start = pyb.millis()
+        for i in range (0, 479):
+            for j in range (0, 271):
+                drawpixel(i, j, color)
+        time0 = pyb.elapsed_millis(start)
+        print('DrawPixels: {} ms'.format(time0))
+        pyb.delay(2000)
+        
+        start = pyb.millis()
+        mytft.fillRectangle(0, 0, 479, 271, bytes(b'\x00\xff\xff'))
+        time0 = pyb.elapsed_millis(start)
+        print('FillRectangle: {} ms'.format(time0))
+        pyb.delay(2000)
     
-    font = dejavu10
-    mytft.setTextStyle((240, 240, 240), None, 0, font, 1)
-    mytft.setTextPos(0, 0, 200, False)
-    print(mytft.printString("This text wil be cut after some characters"))
-    mytft.drawHLine(0, 20, 200)
-    pyb.delay(4000)
+    if True:
+        font = dejavu10
+        mytft.setTextStyle((240, 240, 240), None, 0, font, 1)
+        mytft.setTextPos(0, 0, 200, False)
+        print(mytft.printString("This text wil be cut after some characters"))
+        mytft.drawHLine(0, 20, 200)
+        pyb.delay(4000)
+
 
     
     if True:
