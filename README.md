@@ -133,7 +133,7 @@ drawBitmap(x, y, width, height, data, mode)
           The total size of data must be width * height * 2.
       No type checking of the data is performed.
 
-setTextPos(x, y[, clip = 0][, scroll = True])
+setTextPos(x, y, clip = 0, scroll = True)
     # Set the starting position for the following calls of
       printString() and printChar() to x, y. x, y is the position of the leftside top pixel 
       of the first character using the font given in font.
@@ -145,7 +145,7 @@ setTextPos(x, y[, clip = 0][, scroll = True])
 getTextPos()
     # return a tuple with the actual x,y values of the text postion for the next char printed
 
-setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dummyfont])
+setTextStyle(fgcolor = None, bgcolor = None, transparency = 0, font = None, gap = 0)
     # Set the Style used for text printing with printChar() and printString()
       If fgcolor is given, that color is used for the characters.
       If bgcolor is given, that color is used for the background for 
@@ -162,6 +162,11 @@ setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dumm
       The font used must be created e.g. using the GLCD tool and then convert it using
       the cfonts_to_packed_py.py script of Peter Hinch, adapted to the needs of 
       this library.
+      gap is an additional space left between the printed characters. This space will not 
+      filled by the text background
+      
+getTextStyle()
+    # Return a tuple of font, transparency abd gap
 
 printString(s [, buffer])
     # print the string s at the location set by setTextPos() in the style 
@@ -189,14 +194,22 @@ printChar(c [, buffer])
       
 printNewline()
     # advance the string text position to the next line, where the line height is 
-    given by the selected font
+    given by the selected font, and clear this line
     
 printCR()
     # set the text position to the start of the line
     
-printClrEOL()
-    # Clear to the end of the text line by displaying an rectangle with the
-    text background color and the height given by the selected font.
+printClrLine(mode = 0)
+    # Clear to the actual line depedning on the value of the mode argument:
+    0: Clear to the end of the line
+    1: Clear to the beginning of the line
+    2: Clear the entire line
+    The text background color and the height given by the selected font.
+    
+printClrScr()
+    # clear the scrollabel window set by setScrollArea with the background color set
+    by setTextStyle(). The text position is set to the start of the first line
+    of that area.
 
 setScrollArea(top_fixed_area, vertical_scroll_area, bottom_fixed_area)
     # define the area for line scrolling
@@ -320,6 +333,7 @@ get_properties()
 - fonts/*: Sample fonts and the tool to convert the output of the GLCD-program into files needed by this library
 - README.md: this one
 - tft_test.py: Sample code using the tft library
+- vt100.py: Sample code with a VT100 terminal emulation function.
 - *.raw, *.data, *.bmp: Sample bitmap files with 
     * 565 encoding (16 bits per Pixel) (*.raw),
     * 24 bits per Pixel raw data, generated with Gimp export raw (*.data), and 
@@ -370,4 +384,9 @@ on and off, instead of the special power regulator which seems hard to get.
 - changed the text print method, which requires now three functions calls, setTextStyle(), setTextPos() 
 and printString() or printChar()
 - changed backlight(on/off) to backlight(brightness)
+- some minor changes to the interface PCB layout 
+
+**0.8** Added some fuunctions for a scrollable and fixed area and some more text print support
+- added getTextStyle, printClrLine(), printClrSCR(), printCR(), printNewline()
+- improved the speed of drawPixel() and setXY() 
 - some minor changes to the interface PCB layout 

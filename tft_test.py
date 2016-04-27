@@ -113,7 +113,7 @@ def main(v_flip = False, h_flip = False):
         drawpixel = mytft.drawPixel
         color = bytearray((0, 255, 0))
         start = pyb.millis()
-        for i in range (0, 479):
+        for i in range (0, 479):  # filling pixel-by-pixel
             for j in range (0, 271):
                 drawpixel(i, j, color)
         time0 = pyb.elapsed_millis(start)
@@ -121,14 +121,14 @@ def main(v_flip = False, h_flip = False):
         pyb.delay(2000)
         
         start = pyb.millis()
-        mytft.fillRectangle(0, 0, 479, 271, bytes(b'\x00\xff\xff'))
+        mytft.fillRectangle(0, 0, 479, 271, bytes(b'\x00\xff\xff')) # burst fill
         time0 = pyb.elapsed_millis(start)
         print('FillRectangle: {} ms'.format(time0))
         pyb.delay(2000)
     
     if True:
         font = dejavu10
-        mytft.setTextStyle((240, 240, 240), None, 0, font, 1)
+        mytft.setTextStyle((240, 240, 240), None, 0, font, 0)
         mytft.setTextPos(0, 0, 200, False)
         print(mytft.printString("This text wil be cut after some characters"))
         mytft.drawHLine(0, 20, 200)
@@ -175,7 +175,6 @@ def main(v_flip = False, h_flip = False):
                 mytft.printString(s)
             mytft.printCR()      # No, then CR
             mytft.printNewline() # NL: advance to the next line
-            mytft.printClrEOL()  # clear to end of line
             x,y = mytft.getTextPos()
             mytft.setTextPos(0, height - font.bits_vert)
             mytft.printString("Line {:4} ".format(j))
