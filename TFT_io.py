@@ -49,7 +49,7 @@ PORTRAIT = const(1)
 LANDSCAPE = const(0)
 
 #
-# display bitmap
+# display font bitmap for text
 #
 @micropython.viper        
 def displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
@@ -61,35 +61,8 @@ def displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
     bm_ptr = 0
     bg_ptr = 0
     mask   = 0x80
-#        rd_command = 0x2e  ## start read
+#
     while size:
-#           if False: # transparency: # read back data
-#               gpioa[stm.GPIO_ODR] = rd_command         # start/continue read command
-#               gpiob[1] = D_C | WR     # set C/D and WR low
-#               gpiob[0] = D_C | WR     # set C/D and WR high
-
-#               gpioam[0] = 0       # configure X1..X8 as Input
-
-#               gpiob[1] = RD       # set RD low. C/D still high
-#               rd_command = 0x3e      # continue read
-#               bg_red = gpioa[stm.GPIO_IDR]  # get data from port A
-#               gpiob[0] = RD       # set RD high again
-
-#               gpiob[1] = RD       # set RD low. C/D still high
-#               delay = 1
-#               bg_green = gpioa[stm.GPIO_IDR]  # get data from port A
-#               gpiob[0] = RD       # set RD high again
-
-#               gpiob[1] = RD       # set RD low. C/D still high
-#               delay = 1
-#               bg_blue = gpioa[stm.GPIO_IDR]  # get data from port A
-#               gpiob[0] = RD       # set RD high again
-
-#               gpioam[0] = 0x5555  # configure X1..X8 as Output
-
-#               gpioa[stm.GPIO_ODR] = 0x3c         # continue write command
-#               gpiob[1] = D_C | WR     # set C/D and WR low
-#               gpiob[0] = D_C | WR     # set C/D and WR high
 
         if bits[bm_ptr] & mask:
             if transparency & 8: # Invert bg color as foreground
@@ -171,6 +144,42 @@ def displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
             bm_ptr += 1
         size -= 1
         bg_ptr += 3
+#
+# display Windows BMP data with colortables
+#
+@micropython.viper        
+def displaySCR_bmp(data: ptr8, size: int, bits: int, colortable: ptr8):
+    gpioa = ptr8(stm.GPIOA)
+    gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
+    gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
+#
+    bm_ptr = 0
+    mask0 = (1 << bits) - 1
+    shift = 8 - bits
+    mask = mask0 << shift
+#
+    while size:
+        offset = ((data[bm_ptr] & mask) >> shift) * 4
+        
+        gpioa[stm.GPIO_ODR] = colortable[offset + 2]     # Red
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[stm.GPIO_ODR] = colortable[offset + 1]      # green
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+
+        gpioa[stm.GPIO_ODR] = colortable[offset + 0]      # blue
+        gpiob[1] = WR       # set WR low. C/D still high
+        gpiob[0] = WR       # set WR high again
+        
+        mask >>= bits
+        shift -= bits
+        if mask == 0: # map ptr advance on byte exhaust
+            shift = 8 - bits
+            mask = mask0 << shift
+            bm_ptr += 1
+        size -= 1
 #
 # Set the address range for various draw commands and set the TFT for expecting data
 #

@@ -51,37 +51,57 @@ def displayfile(mytft, name, width, height):
                 n = f.readinto(b)
                 if not n:
                     break
-                mytft.drawBitmap(0, row, width, 1, b, 1)
+                mytft.drawBitmap(0, row, width, 1, b, 16)
             mytft.fillRectangle(0, row, width - 1, height - 1)
         elif mode == "bmp":  # Windows bmp file
             BM, filesize, res0, offset = unpack("<hiii", f.read(14))
-            hdrsize, imgwidth, imgheight, planes, colors = unpack("<iiihh", f.read(16))
-            if colors in (16, 24) and imgwidth <= width and (imgwidth % 4) == 0: ## only 16 or 24 bit colors supported
-                bytes_per_pix = colors // 8
-                f.seek(offset)
+            (hdrsize, imgwidth, imgheight, planes, colors, compress, imgsize, 
+             h_res, v_res, ct_size, cti_size) = unpack("<iiihhiiiiii", f.read(40))
+            if imgwidth <= width: ##
                 skip = ((height - imgheight) // 2)
                 if skip > 0:
                     mytft.fillRectangle(0, height - skip, width - 1, height - 1)
                 else:
                     skip = 0
-                if colors == 16:
-                    bsize = imgwidth * 2
+                if colors in (1,4,8):  # must have a color table
+                    if ct_size == 0: # if 0, size is 2**colors
+                        ct_size = 1 << colors
+                    colortable = bytearray(ct_size * 4)
+                    f.seek(hdrsize + 14) # go to colortable
+                    n = split_read(f, colortable, ct_size * 4) # read colortable
+                    if colors == 1:
+                        bsize = imgwidth // 8
+                    elif colors == 4:
+                        bsize = imgwidth // 2
+                    elif colors == 8:
+                        bsize = imgwidth
                     b = bytearray(bsize)
+                    f.seek(offset)
                     for row in range(height - skip - 1, -1, -1):
                         n = split_read(f, b, bsize)
                         if n != bsize:
                             break
-                        tft.TFT_io.swapbytes(b, bsize)
-                        mytft.drawBitmap(0, row, imgwidth, 1, b, 1)
+                        mytft.drawBitmap(0, row, imgwidth, 1, b, colors, colortable)
                 else:
-                    bsize = imgwidth * 3
-                    b = bytearray(bsize)
-                    for row in range(height - skip - 1, -1, -1):
-                        n = split_read(f, b, bsize)
-                        if n != bsize:
-                            break
-                        tft.TFT_io.swapcolors(b, bsize)
-                        mytft.drawBitmap(0, row, imgwidth, 1, b, 0)
+                    f.seek(offset)
+                    if colors == 16:
+                        bsize = imgwidth * 2
+                        b = bytearray(bsize)
+                        for row in range(height - skip - 1, -1, -1):
+                            n = split_read(f, b, bsize)
+                            if n != bsize:
+                                break
+                            tft.TFT_io.swapbytes(b, bsize)
+                            mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
+                    elif colors == 24:
+                        bsize = imgwidth * 3
+                        b = bytearray(bsize)
+                        for row in range(height - skip - 1, -1, -1):
+                            n = split_read(f, b, bsize)
+                            if n != bsize:
+                                break
+                            tft.TFT_io.swapcolors(b, bsize)
+                            mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
                 mytft.fillRectangle(0, 0, width - 1, row)
         elif mode == "data": # raw 24 bit format with rgb data (gimp export type data)
             b = bytearray(width * 3)
@@ -95,7 +115,7 @@ def displayfile(mytft, name, width, height):
                 n = f.readinto(b)
                 if not n:
                     break
-                mytft.drawBitmap(0, row, width, 1, b)
+                mytft.drawBitmap(0, row, width, 1, b, 24)
             mytft.fillRectangle(0, row, width - 1, height - 1)
         mytft.setColor(color)
 
@@ -126,7 +146,8 @@ def main(v_flip = False, h_flip = False):
         print('FillRectangle: {} ms'.format(time0))
         pyb.delay(2000)
     
-    if True:
+    if False:
+        mytft.clrSCR()
         font = dejavu10
         mytft.setTextStyle((240, 240, 240), None, 0, font, 0)
         mytft.setTextPos(0, 0, 200, False)
@@ -137,6 +158,7 @@ def main(v_flip = False, h_flip = False):
 
     
     if True:
+        mytft.clrSCR()
         mytft.setTextPos(0, height * 0)
         mytft.setTextStyle((255, 0, 0), None, 0, font7hex)
         mytft.printString("This is text on Page 1")
@@ -157,9 +179,9 @@ def main(v_flip = False, h_flip = False):
             mytft.setScrollStart(height * 2)
             pyb.delay(1000)
         mytft.setScrollStart(height * 0)
-        
 
     if True:
+        mytft.clrSCR()
         s = "0123456789"
         font = dejavu10
         mytft.setTextStyle((240, 240, 240), None, 0, font, 1)
@@ -205,6 +227,8 @@ def main(v_flip = False, h_flip = False):
         mytft.fillClippedRectangle(200, 150, 300, 250)
         mytft.drawClippedRectangle(0, 150, 100, 250)
         pyb.delay(2000)
+
+    if True:
         mytft.clrSCR()
         cnt = 10
         mytft.setTextStyle((255,255,255), None, 0, sevensegnumfont)
@@ -224,9 +248,10 @@ def main(v_flip = False, h_flip = False):
             for cnt in range(50):
                 x = pyb.rng() % (width - 51)
                 y = pyb.rng() % (height - 51)
-                mytft.drawBitmap(x, y, 50, 50, buf, 1)
+                mytft.drawBitmap(x, y, 50, 50, buf, 16)
             pyb.delay(1000)
-    files = "F0012.bmp", "F0010.raw", "F0013.data","F0020.bmp"
+
+    files = "F0012.bmp", "F0010.raw", "F0013.data","F0020_1.bmp", "F0020_4.bmp", "F0020_8.bmp", "F0020.bmp"
 
     mytft.setTextStyle((255, 255, 255), None, KEEP_BG | INV_FG, dejavu14)
     while True:

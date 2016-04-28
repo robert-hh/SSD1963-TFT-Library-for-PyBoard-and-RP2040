@@ -539,18 +539,35 @@ class TFT:
 # Draw a bitmap at x,y with size sx, sy
 # mode determines the type of expected data
 # mode = 0: The data must contain 3 bytes/pixel red/green/blue
-# mode = 1: The data must contain 2 packed bytes/pixel blue/green/red in 565 format
-# mode = 2: The data contains 1 bit per pixel, mapped to fg/bg color
+# mode = 1: The data must contain 2 packed bytes/pixel red/green/blue in 565 format
+# mode = 2: The data contains 1 bit per pixel, mapped to fg/bg color unless a colortable is provided
+# mode = 3: The data contains 4 bit per pixel; a colortable with 16 entries must be provided
+# mode = 4: The data contains 8 bit per pixel; a colortable with 16 entries must be provided
 #
-    def drawBitmap(self, x, y, sx, sy, data, mode = 0):
+    def drawBitmap(self, x, y, sx, sy, data, mode = 24, colortable = None):
         self.setXY(x, y, x + sx - 1, y + sy - 1)
-        if mode == 0:
+        if mode == 24:
             TFT_io.displaySCR_AS(data, sx * sy)
-        elif mode == 1:
+        elif mode == 16:
             TFT_io.displaySCR565_AS(data, sx * sy)
-        elif mode == 2:
-            control = bytearray(self.BGcolorvect + self.colorvect + chr(self.transparency))
-            TFT_io.displaySCR_bitmap(data, sx*sy, control, 0)
+        elif mode == 1:
+            if colortable is None:
+                colortable = bytearray([self.BGcolorvect[2], # create colortable
+                                        self.BGcolorvect[1],
+                                        self.BGcolorvect[0],0,
+                                        self.colorvect[2],
+                                        self.colorvect[1],
+                                        self.colorvect[0],0])
+            TFT_io.displaySCR_bmp(data, sx*sy, 1, colortable)
+        elif mode == 4:
+            if colortable is None:
+                return 
+            TFT_io.displaySCR_bmp(data, sx*sy, 4, colortable)
+        elif mode == 8:
+            if colortable is None:
+                return 
+            TFT_io.displaySCR_bmp(data, sx*sy, 8, colortable)
+
 #
 # set scroll area to the region between the first and last line
 #

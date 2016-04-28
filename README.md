@@ -121,16 +121,26 @@ drawCircle(x, y, radius)
 fillCircle(x, y, radius)
     # draw a filled circle at x, y with radius diameter.
 
-drawBitmap(x, y, width, height, data, mode)
+drawBitmap(x, y, width, height, data, bits [, colortable])
     # draw a bitmap at location x, y dimension width x height. Data must contain 
       the bitmap data and must be of type bytearray or buffer. Mode tells how
       the data is arranged:
-      mode = 0 (default): The data must contain 3 bytes per pixel (red, green, blue), 
+      bits = 24 (default): The data must contain 3 bytes per pixel (red, green, blue), 
           which can for instance created by exporting 24 color-bit raw data files
           with gimp. The total size of data must be width * height * 3. 
-      mode = 1: The data must contain 2 bytes per pixel with packed color data 
+      bits = 16: The data must contain 2 bytes per pixel with packed color data 
           (rrrrrggggggbbb) in big endian format (the byte with red first). 
           The total size of data must be width * height * 2.
+      bits = 1: The data must contain 1 bit per pixel. The colors to be used
+          must be supplied in the colortable, 4 bytes per value in the order
+          blue, green, red, 0. If colortable is None, the values for color and
+          BGcolor are used. This matches the BMP file type with 1 bit per pixel
+      bits = 4: The data must contain 4 bits per pixel. The colors to be used
+          must be supplied in the colortable, 4 bytes per value in the order
+          blue, green, red, 0. This matches the BMP file type with 4 bit per pixel
+      bits = 8: The data must contain one byte per pixel. The colors to be used
+          must be supplied in the colortable, 4 bytes per value in the order
+          blue, green, red, 0.This matches the BMP file type with 8 bit per pixel
       No type checking of the data is performed.
 
 setTextPos(x, y, clip = 0, scroll = True)
