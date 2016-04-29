@@ -680,7 +680,7 @@ class TFT:
 # Get Text Style: return (color, bgcolor, font, transpareny, gap)
 #
     def getTextStyle(self):
-        return (self.text_font[3:6], self.text_font[0:3], 
+        return (self.text_color[3:6], self.text_color[0:3], 
                 self.transparency, self.text_font, self.text_gap)
         
 #
