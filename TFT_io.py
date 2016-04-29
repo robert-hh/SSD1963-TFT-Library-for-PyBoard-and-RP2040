@@ -52,10 +52,9 @@ LANDSCAPE = const(0)
 # display font bitmap for text
 #
 @micropython.viper        
-def displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
+def displaySCR_charbitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
     gpioa = ptr8(stm.GPIOA)
     gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
-    gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
 #
     transparency = control[6]
     bm_ptr = 0
@@ -139,26 +138,25 @@ def displaySCR_bitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
                 gpiob[1] = WR       # set WR low. C/D still high
                 gpiob[0] = WR       # set WR high again
         mask >>= 1
-        if mask == 0: # map ptr advance on byte exhaust
+        if mask == 0: # mask reset & data ptr advance on byte exhaust
             mask = 0x80
             bm_ptr += 1
         size -= 1
         bg_ptr += 3
 #
-# display Windows BMP data with colortables
+# display Windows BMP data, optionally with colortables
 #
 @micropython.viper        
 def displaySCR_bmp(data: ptr8, size: int, bits: int, colortable: ptr8):
     gpioa = ptr8(stm.GPIOA)
     gpiob = ptr16(stm.GPIOB + stm.GPIO_BSRRL)
-    gpioam = ptr16(stm.GPIOA + stm.GPIO_MODER)
 #
     bm_ptr = 0
-    mask0 = (1 << bits) - 1
     shift = 8 - bits
-    mask = mask0 << shift
+    mask = ((1 << bits) - 1) << shift
 #
     while size:
+
         offset = ((data[bm_ptr] & mask) >> shift) * 4
         
         gpioa[stm.GPIO_ODR] = colortable[offset + 2]     # Red
@@ -175,9 +173,9 @@ def displaySCR_bmp(data: ptr8, size: int, bits: int, colortable: ptr8):
         
         mask >>= bits
         shift -= bits
-        if mask == 0: # map ptr advance on byte exhaust
+        if mask == 0: # mask rebuild & data ptr advance on byte exhaust
             shift = 8 - bits
-            mask = mask0 << shift
+            mask = ((1 << bits) - 1) << shift
             bm_ptr += 1
         size -= 1
 #
@@ -193,7 +191,7 @@ def setXY_L(r0, r1, r2, r3):
 # set up pointers to GPIO
 # r4: changing data
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     movwt(r6, stm.GPIOA) # target
     add (r6, stm.GPIO_ODR)
@@ -290,7 +288,7 @@ def setXY_P(r0, r1, r2, r3):
 # set up pointers to GPIO
 # r4: changing data
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     movwt(r6, stm.GPIOA) # target
     add (r6, stm.GPIO_ODR)
@@ -391,7 +389,7 @@ def drawPixel_L(r0, r1, r2):
 # set up pointers to GPIO
 # r4: changing data
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     movwt(r6, stm.GPIOA) # target
     add (r6, stm.GPIO_ODR)
@@ -509,7 +507,7 @@ def drawPixel_P(r0, r1, r2):
 # set up pointers to GPIO
 # r4: changing data
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     movwt(r6, stm.GPIOA) # target
     add (r6, stm.GPIO_ODR)
@@ -626,7 +624,7 @@ def drawPixel_P(r0, r1, r2):
 def fillSCR_AS(r0, r1):  # r0: ptr to data, r1: number of pixels (3 bytes/pixel)
 # set up pointers to GPIO
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     mov(r5, WR)
     movwt(r6, stm.GPIOA) # target
@@ -668,7 +666,7 @@ def fillSCR_AS(r0, r1):  # r0: ptr to data, r1: number of pixels (3 bytes/pixel)
 def displaySCR_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/pixel)
 # set up pointers to GPIO
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     mov(r5, WR)
     movwt(r6, stm.GPIOA) # target
@@ -708,7 +706,7 @@ def displaySCR_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/
 def displaySCR565_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/pixel)
 # set up pointers to GPIO
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     mov(r5, WR)
     movwt(r6, stm.GPIOA) # target
@@ -778,7 +776,7 @@ def tft_cmd_data(cmd: int, data: ptr8, size: int):
 def tft_cmd_data_AS(r0, r1, r2):  # r0: command, r1: ptr to data, r2 is size in bytes
 # set up pointers to GPIO
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     movwt(r6, stm.GPIOA) # target
     add (r6, stm.GPIO_ODR)
@@ -822,7 +820,7 @@ def tft_cmd(cmd: int):
 def tft_write_data_AS(r0, r1):  # r0: ptr to data, r1: is size in Bytes
 # set up pointers to GPIO
 # r5: bit mask for control lines
-# r6: GPIOA OODR register ptr
+# r6: GPIOA ODR register ptr
 # r7: GPIOB BSSRL register ptr
     movwt(r6, stm.GPIOA) # target
     add (r6, stm.GPIO_ODR)

@@ -224,8 +224,8 @@ def main(v_flip = False, h_flip = False):
         pyb.delay(2000)
 
         mytft.setColor((255,255,255))
-        mytft.fillClippedRectangle(200, 150, 300, 250)
-        mytft.drawClippedRectangle(0, 150, 100, 250)
+        mytft.fillClippedRectangle(200, 150, 300, 250, (255, 0, 0))
+        mytft.drawClippedRectangle(0, 150, 100, 250, (0, 255, 0))
         pyb.delay(2000)
 
     if True:
@@ -251,7 +251,7 @@ def main(v_flip = False, h_flip = False):
                 mytft.drawBitmap(x, y, 50, 50, buf, 16)
             pyb.delay(1000)
 
-    files = "F0012.bmp", "F0010.raw", "F0013.data","F0020_1.bmp", "F0020_4.bmp", "F0020_8.bmp", "F0020.bmp"
+    files = "F0012.bmp", "F0010.raw", "F0013.data","F0020_1.bmp", "F0020_2.bmp", "F0020_4.bmp", "F0020_8.bmp", "F0020.bmp"
 
     mytft.setTextStyle((255, 255, 255), None, KEEP_BG | INV_FG, dejavu14)
     while True:

@@ -257,9 +257,6 @@ class TFT:
 #
 # Set character printing defaults
 #
-#        self.setScrollArea(0, self.disp_y_size + 1, 0)
-#        self.setScrollStart(0)
-#        self.setTextPos(0,0)
         self.text_font = None
         self.setTextStyle(self.color, self.BGcolor, 0, None, 0)
 #
@@ -319,6 +316,9 @@ class TFT:
     def setBGColor(self, bgcolor):
         self.BGcolor = bgcolor
         self.BGcolorvect = bytearray(self.BGcolor)  # prepare byte array
+        self.BMPcolortable = bytearray([self.BGcolorvect[2], # create colortable
+            self.BGcolorvect[1], self.BGcolorvect[0],0,
+            self.colorvect[2], self.colorvect[1], self.colorvect[0],0])
 #
 # get the color used for the draw commands
 #            
@@ -339,9 +339,13 @@ class TFT:
 #
 # clear screen, set it to BG color.
 #             
-    def clrSCR(self):
+    def clrSCR(self, color = None):
+        if color is None:
+            colorvect = self.BGcolorvect
+        else:
+            colorvect = bytearray(color)
         self.clrXY()
-        TFT_io.fillSCR_AS(self.BGcolorvect, (self.disp_x_size + 1) * (self.disp_y_size + 1))
+        TFT_io.fillSCR_AS(colorvect, (self.disp_x_size + 1) * (self.disp_y_size + 1))
         self.setScrollArea(0, self.disp_y_size + 1, 0)
         self.setScrollStart(0)
         self.setTextPos(0,0)
@@ -357,13 +361,16 @@ class TFT:
 # Draw a line from x1, y1 to x2, y2 with the color set by setColor()
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
-    def drawLine(self, x1, y1, x2, y2): 
+    def drawLine(self, x1, y1, x2, y2, color = None): 
         if y1 == y2:
-            self.drawHLine(x1, y1, x2 - x1 + 1)
+            self.drawHLine(x1, y1, x2 - x1 + 1, color)
         elif x1 == x2:
-            self.drawVLine(x1, y1, y2 - y1 + 1)
+            self.drawVLine(x1, y1, y2 - y1 + 1, color)
         else:
-            colorvect = self.colorvect
+            if color is None:
+                colorvect = self.colorvect
+            else:
+                colorvect = bytearray(color)
             dx, xstep  = (x2 - x1, 1) if x2 > x1 else (x1 - x2, -1)
             dy, ystep  = (y2 - y1, 1) if y2 > y1 else (y1 - y2, -1)
             col, row = x1, y1
@@ -393,35 +400,43 @@ class TFT:
 # Draw a horizontal line with 1 Pixel width, from x,y to x + l - 1, y
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
-    def drawHLine(self, x, y, l): # draw horiontal Line
+    def drawHLine(self, x, y, l, color = None): # draw horiontal Line
+        if color is None:
+            colorvect = self.colorvect
+        else:
+            colorvect = bytearray(color)
         if l < 0:  # negative length, swap parameters
             l = -l
             x -= l
         self.setXY(x, y, x + l - 1, y) # set display window
-        TFT_io.fillSCR_AS(self.colorvect, l)
+        TFT_io.fillSCR_AS(colorvect, l)
 #
 # Draw a vertical line with 1 Pixel width, from x,y to x, y + l - 1
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 # 
-    def drawVLine(self, x, y, l): # draw horiontal Line
+    def drawVLine(self, x, y, l, color = None): # draw horiontal Line
+        if color is None:
+            colorvect = self.colorvect
+        else:
+            colorvect = bytearray(color)
         if l < 0:  # negative length, swap parameters
             l = -l
             y -= l
         self.setXY(x, y, x, y + l - 1) # set display window
-        TFT_io.fillSCR_AS(self.colorvect, l)
+        TFT_io.fillSCR_AS(colorvect, l)
 #
 # Draw rectangle from x1, y1, to x2, y2
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 #
-    def drawRectangle(self, x1, y1, x2, y2):
+    def drawRectangle(self, x1, y1, x2, y2, color = None):
         if x1 > x2:
             x1, x2 = x2, x1
         if y1 > y2:
             y1, y2 = y2, y1
-    	self.drawHLine(x1, y1, x2 - x1 + 1)
-        self.drawHLine(x1, y2, x2 - x1 + 1)
-        self.drawVLine(x1, y1, y2 - y1 + 1)
-        self.drawVLine(x2, y1, y2 - y1 + 1)
+    	self.drawHLine(x1, y1, x2 - x1 + 1, color)
+        self.drawHLine(x1, y2, x2 - x1 + 1, color)
+        self.drawVLine(x1, y1, y2 - y1 + 1, color)
+        self.drawVLine(x2, y1, y2 - y1 + 1, color)
 #
 # Fill rectangle
 # Almost straight port from the UTFT Library at Rinky-Dink Electronics
@@ -441,13 +456,16 @@ class TFT:
 # Draw smooth rectangle from x1, y1, to x2, y2
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 #
-    def drawClippedRectangle(self, x1, y1, x2, y2):
+    def drawClippedRectangle(self, x1, y1, x2, y2, color = None):
         if x1 > x2:
             x1, x2 = x2, x1
         if y1 > y2:
             y1, y2 = y2, y1
         if (x2-x1) > 4 and (y2-y1) > 4:
-            colorvect = self.colorvect
+            if color is None:
+                colorvect = self.colorvect
+            else:
+                colorvect = bytearray(color)
             self.drawPixel(x1 + 2,y1 + 1, colorvect)
             self.drawPixel(x1 + 1,y1 + 2, colorvect)
             self.drawPixel(x2 - 2,y1 + 1, colorvect)
@@ -456,15 +474,15 @@ class TFT:
             self.drawPixel(x1 + 1,y2 - 2, colorvect)
             self.drawPixel(x2 - 2,y2 - 1, colorvect)
             self.drawPixel(x2 - 1,y2 - 2, colorvect)
-            self.drawHLine(x1 + 3, y1, x2 - x1 - 5)
-            self.drawHLine(x1 + 3, y2, x2 - x1 - 5)
-            self.drawVLine(x1, y1 + 3, y2 - y1 - 5)
-            self.drawVLine(x2, y1 + 3, y2 - y1 - 5)
+            self.drawHLine(x1 + 3, y1, x2 - x1 - 5, colorvect)
+            self.drawHLine(x1 + 3, y2, x2 - x1 - 5, colorvect)
+            self.drawVLine(x1, y1 + 3, y2 - y1 - 5, colorvect)
+            self.drawVLine(x2, y1 + 3, y2 - y1 - 5, colorvect)
 #
 # Fill smooth rectangle from x1, y1, to x2, y2
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 #
-    def fillClippedRectangle(self, x1, y1, x2, y2):
+    def fillClippedRectangle(self, x1, y1, x2, y2, color = None):
         if x1 > x2:
             t = x1; x1 = x2; x2 = t
         if y1 > y2:
@@ -472,24 +490,27 @@ class TFT:
         if (x2-x1) > 4 and (y2-y1) > 4:
             for i in range(((y2 - y1) // 2) + 1):
                 if i == 0:
-                    self.drawHLine(x1 + 3, y1 + i, x2 - x1 - 5)
-                    self.drawHLine(x1 + 3, y2 - i, x2 - x1 - 5)
+                    self.drawHLine(x1 + 3, y1 + i, x2 - x1 - 5, color)
+                    self.drawHLine(x1 + 3, y2 - i, x2 - x1 - 5, color)
                 elif i == 1:
-                    self.drawHLine(x1 + 2, y1 + i, x2 - x1 - 3)
-                    self.drawHLine(x1 + 2, y2 - i, x2 - x1 - 3)
+                    self.drawHLine(x1 + 2, y1 + i, x2 - x1 - 3, color)
+                    self.drawHLine(x1 + 2, y2 - i, x2 - x1 - 3, color)
                 elif i == 2:
-                    self.drawHLine(x1 + 1, y1 + i, x2 - x1 - 1)
-                    self.drawHLine(x1 + 1, y2 - i, x2 - x1 - 1)
+                    self.drawHLine(x1 + 1, y1 + i, x2 - x1 - 1, color)
+                    self.drawHLine(x1 + 1, y2 - i, x2 - x1 - 1, color)
                 else:
-                    self.drawHLine(x1, y1 + i, x2 - x1 + 1)
-                    self.drawHLine(x1, y2 - i, x2 - x1 + 1)
+                    self.drawHLine(x1, y1 + i, x2 - x1 + 1, color)
+                    self.drawHLine(x1, y2 - i, x2 - x1 + 1, color)
 #
 # draw a circle at x, y with radius
 # Straight port from the UTFT Library at Rinky-Dink Electronics
 #
-    def drawCircle(self, x, y, radius):
+    def drawCircle(self, x, y, radius, color = None):
 
-        colorvect = self.colorvect
+        if color is None:
+            colorvect = self.colorvect
+        else:
+            colorvect = bytearray(color)
     
         f = 1 - radius
         ddF_x = 1
@@ -524,7 +545,7 @@ class TFT:
 # Instead of calculating x = sqrt(r*r - y*y), it searches the x
 # for r*r = x*x + x*x
 #
-    def fillCircle(self, x, y, radius):
+    def fillCircle(self, x, y, radius, color = None):
         r_square = radius * radius * 4
         for y1 in range (-(radius * 2), 1): 
             y_square = y1 * y1
@@ -532,17 +553,21 @@ class TFT:
                 if x1*x1+y_square <= r_square: 
                     x1i = x1 // 2
                     y1i = y1 // 2
-                    self.drawHLine(x + x1i, y + y1i, 2 * (-x1i))
-                    self.drawHLine(x + x1i, y - y1i, 2 * (-x1i))
+                    self.drawHLine(x + x1i, y + y1i, 2 * (-x1i), color)
+                    self.drawHLine(x + x1i, y - y1i, 2 * (-x1i), color)
                     break;
 #
 # Draw a bitmap at x,y with size sx, sy
 # mode determines the type of expected data
-# mode = 0: The data must contain 3 bytes/pixel red/green/blue
-# mode = 1: The data must contain 2 packed bytes/pixel red/green/blue in 565 format
-# mode = 2: The data contains 1 bit per pixel, mapped to fg/bg color unless a colortable is provided
-# mode = 3: The data contains 4 bit per pixel; a colortable with 16 entries must be provided
-# mode = 4: The data contains 8 bit per pixel; a colortable with 16 entries must be provided
+# mode = 1: The data contains 1 bit per pixel, mapped to fg/bg color 
+#           unless a colortable is provided
+# mode = 2: The data contains 2 bit per pixel; a colortable with 4 entries must be provided
+# mode = 4: The data contains 4 bit per pixel; 
+#           a colortable with 16 entries must be provided
+# mode = 8: The data contains 8 bit per pixel; 
+#           a colortable with 256 entries must be provided
+# mode = 16: The data must contain 2 packed bytes/pixel red/green/blue in 565 format
+# mode = 24: The data must contain 3 bytes/pixel red/green/blue
 #
     def drawBitmap(self, x, y, sx, sy, data, mode = 24, colortable = None):
         self.setXY(x, y, x + sx - 1, y + sy - 1)
@@ -552,13 +577,12 @@ class TFT:
             TFT_io.displaySCR565_AS(data, sx * sy)
         elif mode == 1:
             if colortable is None:
-                colortable = bytearray([self.BGcolorvect[2], # create colortable
-                                        self.BGcolorvect[1],
-                                        self.BGcolorvect[0],0,
-                                        self.colorvect[2],
-                                        self.colorvect[1],
-                                        self.colorvect[0],0])
+                colortable = self.BMPcolortable # create colortable
             TFT_io.displaySCR_bmp(data, sx*sy, 1, colortable)
+        elif mode == 2:
+            if colortable is None:
+                return 
+            TFT_io.displaySCR_bmp(data, sx*sy, 2, colortable)
         elif mode == 4:
             if colortable is None:
                 return 
@@ -653,10 +677,11 @@ class TFT:
         if gap is not None:
             self.text_gap = gap
 #
-# Get Text Style: font, transparenym gao
+# Get Text Style: return (color, bgcolor, font, transpareny, gap)
 #
     def getTextStyle(self):
-        return self.text_font, self.transparency, self.text_gap
+        return (self.text_font[3:6], self.text_font[0:3], 
+                self.transparency, self.text_font, self.text_gap)
         
 #
 # Check, if a new line is to be opened
@@ -729,7 +754,7 @@ class TFT:
                 self.printNewline(True) # NL: advance to the next line
             else:
                 return 0
-# set data arrays & XY-Range
+# Retrieve Background data if transparency is required
         if self.transparency: # in case of transpareny, the frame buffer content is needed
             if not bg_buf:    # buffer allocation needed?
                 bg_buf = bytearray(pix_count * 3) # sigh...
@@ -737,9 +762,9 @@ class TFT:
             TFT_io.tft_read_cmd_data_AS(0x2e, bg_buf, pix_count * 3) # read background data
         else:
             bg_buf = 0 # dummy assignment, since None is not accepted
-# print char
+# Set XY range & print char
         self.setXY(self.text_x, self.text_y, self.text_x + cols - 1, self.text_y + rows - 1) # set area
-        TFT_io.displaySCR_bitmap(fontptr, pix_count, self.text_color, bg_buf) # display char!
+        TFT_io.displaySCR_charbitmap(fontptr, pix_count, self.text_color, bg_buf) # display char!
 #advance pointer
         self.text_x += (cols + self.text_gap)
         return cols + self.text_gap
