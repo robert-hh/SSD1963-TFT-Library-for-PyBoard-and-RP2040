@@ -40,25 +40,25 @@ In total, the speed is reasonable. Clearing the 480x272 display (= filling it wi
 
 ###Functions:###
 
-**tft_init(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])**
+**tft_init(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])**  
 repeat the initialization which was peformed during creation of the instance.  This function must be called if the TFT power was switched off, but PyBoard kept  on running. tft_init is called by __init__() during the creation of the instance. It includes the call to power(True), but leaves the backlight off!
 
-**getScreensize():**
+**getScreensize()**  
 return a tuple of logical screen width and height
 
-**setColor(FGcolor) **
+**setColor(FGcolor)**  
 Set the default foreground color, used by the draw functions. **FGcolor** must be a 3-element tuple with the values for red, green and blue. range 0..255 each; the lower bits may be ignored
 
-**setBGColor(BGcolor)** 
+**setBGColor(BGcolor)**  
 Set the default background color, used by clrSCR() and other functions. **BGcolor** must be a 3-element tuple with the values for red, green and blue in the       range 0..255 each; the lower bits may be ignored.
 
-**getColor()** 
+**getColor()**  
 Get the default foreground color, set by a previous setColor() call.
 
-**getBGColor()** 
+**getBGColor()**  
 Get the default background color, set by a previous setBGColor() call.
 
-**set_tft_mode([v_flip = False,][ h_flip = False,][ c_flip = False, ][orientation = LANDSCAPE])**
+**set_tft_mode([v_flip = False,][ h_flip = False,][ c_flip = False, ][orientation = LANDSCAPE])**   
 Set the operation mode of the tft, equivalent to the settings used at init time. Parameters:
 
 * orientation: which is LANDSCAPE or PORTRAIT.
@@ -66,22 +66,22 @@ Set the operation mode of the tft, equivalent to the settings used at init time.
 * h_flip: Flip horizontal True/False
 * c_flip: exchange red/blue. This change is effecttive for the whole screen.
     
-**get_tft_mode()**
+**get_tft_mode()**  
 Gets the 4 element tuple of v_flip, h_flip, c_flip and orientation.
 
-**clrSCR([color = None)**
+**clrSCR([color = None)**  
 Set the total screen to the background color, set the scroll area back to the full screen and set the text print position to (0,0). The optional parameter color specifies the color to be used for clearing. If not set the color specified by setBGColor() is taken. If only the scrollable area is to be cleared, used printClrSCR().
     
-**backlight(percent)**
+**backlight(percent)**  
 Set the LED backlight brightness to percent (0..100). 0 means backlight off. This function requires the LED-A pin of the TFT to be connected to Y3.
 
-**power(Switch)**
+**power(Switch)**  
 Switch the power of the TFT on (Switch == True) or off (Switch = False). After turning power on again, the init process has to be repeated, e.g. by a call to init().
 
-**drawPixel(x, y, color)**
+**drawPixel(x, y, color)**  
  Set a pixel at position x, y with the color. Color must be a bytearray or bytes object of 3 bytes length with the color setting for red, green and blue.
 
-**drawLine(x1, y2, x2, y2 [, color = None])**
+**drawLine(x1, y2, x2, y2 [, color = None])**  
  Draw a line from x1, y1 to x2, y2. If the line is horizontal or vertical, 
 the respective functions are used. Otherwise drawPixel is used. 
 The optional parameter color specifies the color to be used for clearing. If not set the color specified by setColor() is taken.
@@ -90,29 +90,29 @@ The optional parameter color specifies the color to be used for clearing. If not
 Draw a horizontal line from x,y of len length. 
 The optional parameter color specifies the color to be used for clearing. If not set the color specified by setColor() is taken.
 
-**drawVLine(x, y, len [, color = None])**
+**drawVLine(x, y, len [, color = None])**  
 Draw a vertical line from x,y of len length
 The optional parameter color specifies the color to be used for clearing. If not set the color specified by setColor() is taken.
 
 **drawRectangle(x1, y1, x2, y2 [, color = None])**
 Sraw a rectangle from x1, y1, to x2, y2. The width of the line is 1 pixel. The optional parameter color specifies the color to be used for clearing. If not set the color specified by setColor() is taken.
 
-**fillRectangle(x1, y1, x2, y2[, color = None])**
+**fillRectangle(x1, y1, x2, y2[, color = None])**  
 Fill a rectangle from x1, y1, to x2, y2 with the foreground color or with the color given in the optional argument color.
 
 **drawClippedRectangle(x1, y1, x2, y2 [, color = None])**
 Draw a rectangle with canted edges from x1, y1, to x2, y2. The width of the line is 1 pixel. The optional parameter color specifies the color to be used for clearing. If not set the color specified by setColor() is taken.
 
-**fillClippedRectangle(x1, y1, x2, y2, [, color = None])**
+**fillClippedRectangle(x1, y1, x2, y2, [, color = None])**  
 Fill a rectangle with canted edges from x1, y1, to x2, y2 with the foreground color. The optional parameter color specifies the color to be used for clearing. If not set the color specified by setColor() is taken.
 
-**drawCircle(x, y, radius, [, color = None])**
+**drawCircle(x, y, radius, [, color = None])**  
 Draw a circle at x, y with radius diameter. The width of the line is 1 pixel. The optional parameter color specifies the color to be used for clearing. If not set the color specified by setColor() is taken.
 
-**fillCircle(x, y, radius [, color = None])**
+**fillCircle(x, y, radius [, color = None])**  
 Draw a filled circle at x, y with radius diameter. The optional parameter color specifies the color to be used for clearing. If not set the color specified by setColor() is taken.
 
-**drawBitmap(x, y, width, height, data, bits [, colortable])**
+**drawBitmap(x, y, width, height, data, bits [, colortable])**  
 Display a bitmap at location **x**, **y** and dimension **width** x **height**. **data** must contain the bitmap data and must be of type bytearray or buffer. **bits** tells how many bits per pixel the data must have:
 
 * bits = 24 (default): The data must contain 3 bytes per pixel (red, green, blue),  which can for instance created by exporting 24 color-bit raw data files with gimp. The total size of data must be width * height * 3. 
@@ -127,13 +127,13 @@ BGcolor are used. This matches the BMP file type with 1 bit per pixel
 
 No type or size checking of the data is performed.
 
-**setTextPos(x, y[, clip = 0][, scroll = True])**
+**setTextPos(x, y[, clip = 0][, scroll = True])**  
 Set the starting position for the following calls of  printString() and printChar() to **x**, **y.** x, y is the position of the leftside top pixel of the first character using the font given in font. **clip** defines, if set, the maximal length which will be printed. The default is the  screen width. **scroll** tells, whether text will flow over to a next line if longer than the screen width or the width given by clip. The default is True.
       
-**getTextPos()**
+**getTextPos()**  
 Return a tuple with the actual x,y values of the text postion for the next char to be printed.
 
-**setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dummyfont][, gap = 0])**
+**setTextStyle(fgcolor = None [, bgcolor = None][, transparency = 0][, font = dummyfont][, gap = 0])**  
 Set the Style used for text printing with printChar() and printString().  If **fgcolor** is given, that color is used for the characters. If **bgcolor** is given, that color is used for the background. For transparency the following values are valid:
 
 - 0: no transparency. The bgcolor is used for char. background, fgcolor for the text
@@ -147,63 +147,63 @@ The foreground setting can be combined with any of the background settings. Defa
 bytearray, e.g. tuples, lists or strings. The font used must be created e.g. using the GLCD tool and then convert it using the cfonts_to_packed_py.py script of Peter Hinch, adapted to the needs of 
 this library. **gap** is an additional spacing between the characters.
 
-**getTextStyle()**
+**getTextStyle()**  
 Return a tuple of fgcolor, bgcolot, transparency, font and gap.
 
-**printString(s [, buffer])**
+**printString(s [, buffer])**  
 Print the string s at the location set by setTextPos() in the style 
       detailed by setTextStyle(). **buffer**  is a optional argument for a buffer receiving the background data when transparency is chosen. The size must be at least char_with * char_heigth * 3. There is no size checking involved. If the buffer is too small,  the program will crash. 
 printStr advances the text position for the next text by the width of the character. It will flow over to a next line, if necessary and enabled by setTextPos(), at a distance given by the char height. Before printing text, the font must be set with setTextStyle()
       
-**printChar(c [, buffer])**
+**printChar(c [, buffer])**  
 Print the character **c** at the location set by setTextPos() in the style detailed by setTextStyle().
 **buffer** is a optional argument for a buffer receiving the background data when transparency is chosen. The size must be at least char_with * char_heigth * 3. There is no size checking involved. If the buffer is too small, the program will crash. printChar advances the text position for the next text by the width of the character. It will flow over to a next line, if necessary and enabled by setTextPos(), at a distance given by the char height. Before printing text, the font must be set with setTextStyle().
-      
-**printNewline()**
+
+**printNewline()**  
 Advance the string text position to the next line, where the line height is given by the selected font and clear this line.
     
-**printCR()**
+**printCR()**  
 Set the text position to the start of the line.
 
-**printClrSCR()**
+**printClrSCR()**  
 Clear the scrollable window set by setScrollArea() with the background color set by setTextStyle(). The text position and the logical first line is set to the start of the physical first line of that area. 
 
-**printClrLine(mode = 0)**
-Clear to the actual line depedning on the value of the **mode** argument:
+**printClrLine(mode = 0)**  
+Clear to the actual line depending on the value of the **mode** argument:
 0: Clear to the end of the line 
 1: Clear to the beginning of the line 
 2: Clear the entire line 
 The text background color and the height given by the selected font.
 
-**setScrollArea(top_fixed_area,  vertical_scroll_area, bottom_fixed_area)**
+**setScrollArea(top_fixed_area,  vertical_scroll_area, bottom_fixed_area)**  
 Define the area for line scrolling.  **top_fixed_area** tells the number of lines at the top which are not scrolled, **vertical_scroll_area**: the number of lines which will be scrolled, and **bottom_fixed_area** the number of lines at the bottom which are not scrolled.
 
-**setScrollStart(line)**
+**setScrollStart(line)**  
 Set the line which will be the one display first in the vertical scroll area.  **line**  is the first logical line displayed in the scroll area.
 Screen coordinates are always physical coordinates. 
 
            
 ## Lower level functions ##
 
-**setXY(x1, y1, x2, y2)**
+**setXY(x1, y1, x2, y2)**  
 Set the region for the bulk transfer functions fillSCR() and displaySCRxx()
     
-**clrXY()**
+**clrXY()**  
 Set the bulk transfer region back to the full screen size.
     
-**TFT_io.fillSCR_AS(data, size)**
+**TFT_io.fillSCR_AS(data, size)**  
 Fill the region set with setXY() or clrXY() with the pixel value given
 in **data**. **size** is the number of pixels, **data** must be a bytearray object of three bytes length with the red-green-blue values.
           
-**TFT_io.displaySCR_AS(data, size)**
+**TFT_io.displaySCR_AS(data, size)**  
 Fill the region set with setXY() or clrXY() with the pixel values given
 in **data**. **size** is the number of pixels, **data** must be a bytearray object of 3 * size length with the red-green-blue values per pixel.
-    
-**TFT_io.displaySCR565_AS(data, size)**
+
+**TFT_io.displaySCR565_AS(data, size)**  
 Fill the region set with setXY() or clrXY() with the pixel values given
  in data. **size** is the number of pixels, **data** must be a bytearray object of 2 * size length with the 16 bit packed red-green-blue values per pixel. The color pattern per word is rrrrrggggggbbbbb, with rrrrr in the lower (=first) byte. 
           
-**TFT_io.displaySCR_fontbitmap(bitmap: ptr8, size: int, control: ptr8, bg_buf: ptr8)**
+**TFT_io.displaySCR_fontbitmap(bitmap: ptr8, size: int, control: ptr8, bg_buf: ptr8)**  
 Fill the region set with setXY() or clrXY() with the pixel values given
 in bitmap. **bitmap** contains a single bit per pixel . The highest order bit in a byte is the first to be displayed. **size** is the number of bits the bitmap. **control** is a byte vector with further parameters controlling the behavior, packed here,  since viper functions allow 4 arguments only.
 
@@ -213,22 +213,22 @@ Byte 6: Transparency mode. See setTextStyle for the value definition
 
 **bg_buf** must contain the frame buffer data for the pixel area chose. It is used only when the respective transparency mode is choses. If not used, an empty bytearray must be supllied. No size checking is performed. 
           
-**TFT_io.displaySCR_bmp(bitmap: ptr8, size: int, bits: ptr8, colortable: ptr8)**
+**TFT_io.displaySCR_bmp(bitmap: ptr8, size: int, bits: ptr8, colortable: ptr8)**  
 Fill the region set with setXY() or clrXY() with the pixel values given
 in **bitmap**. The number of bits per pixel is defined by **bits**. Suitable values are 1, 2, 4, and 8. **size** tells the number of pixel data items in bitmap. **colortable** must contain the color matching to the respective value of a pixel with 4 bytes per value in the order blue, green, red, d/c. The fourth byte is ignored. Therefore, the expected size of colortable is 8, 16, 64 or 1024 bytes. No size checking is performed on bitmap or colortable.
           
-**TFT_io.tft_cmd_data(cmd, data, size)**
-**TFT_io.tft_cmd_data_AS(cmd, data, size)**
+**TFT_io.tft_cmd_data(cmd, data, size)**  
+**TFT_io.tft_cmd_data_AS(cmd, data, size)**  
  Send a command byte and data to the controller. **cmd** is a single integer with the command, **data** a bytearray of size length with the command payload. The version with the AS suffix uses inline-assembler. During start-up of the TFT, when the device is clocked by the 10MHz or  6.5 MHz crystal, the assembler version is a little bit too fast. Please use the viper version instead. 
  This function may also be used for other displays like the Character based 2x20 or 4x20 displays, which use the 8080-type interface.
 
-**TFT_io.tft_cmd(cmd)**
+**TFT_io.tft_cmd(cmd)**  
 Send a single command byte to the TFT.
       
-**TFT_io.tft_data_AS(cmd, data, size)**
+**TFT_io.tft_data_AS(cmd, data, size)**  
 Send data to the TFT. **size** is the number of bytes, **data** must be a bytearray object of **size** length.
 
-**TFT_io.tft_read_cmd_data_AS(cmd, data, size)**
+**TFT_io.tft_read_cmd_data_AS(cmd, data, size)**  
 Send a command to the TFT and get the response back. **cmd** is the command byte, **data** a bytearray of **size** length which will receive the data. This function can be used to read status data or to read data from the frame buffer. In the latter case, the region to be read from must be specified first with a call to setXY().
       
 #Class TFTfont#
@@ -243,7 +243,7 @@ The resulting python file can be imported to your code, defining font names, e.g
 ```from font12 import font12```
 The font class exports three functions:
 
-**TFTfont(fontbitmap, index, vert, hor, no_of_chars [, first_char=32])**
+**TFTfont(fontbitmap, index, vert, hor, no_of_chars [, first_char=32])**  
 This creates the instance of the font. Parameters are:
 
 * **fontbitmap**:  the data array with the pixel data
@@ -253,7 +253,7 @@ This creates the instance of the font. Parameters are:
 * **no_of_chars**: the number of characters defined in this font
 * **first_char**: the ordinal value of the first characted in the font. Default is 32 (Space)
     
-**get_char(c)**
+**get_char(c)**  
 Return the character bitmap and dimensions. **c** is the ordinal value of the character. The return value is a tuple comprising of:
 
 * **bitmap**: The address of a packed bitmap defining character pixels column-by-column. Taken as Python object, this is an int, to be seen by a viper or 
@@ -263,7 +263,7 @@ assembler function as a ptr8 data type.
 
 The total number of bits in the character bitmap is n = vert*hor.
     
-**get_properties()**
+**get_properties()**  
 Return a tuple with the basi properties of the font. These are:
 
  - **bits_vert**: the number of vertical pixels
