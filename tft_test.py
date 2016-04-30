@@ -4,7 +4,7 @@
 import os, gc, pyb
 from struct import unpack
 
-import tft 
+import tft
 from dejavu14 import dejavu14
 from font6mono import font6mono
 from dejavu10 import dejavu10
@@ -34,8 +34,6 @@ def displayfile(mytft, name, width, height):
     with open(name, "rb") as f:
         gc.collect()
         row = 0
-        color = mytft.getColor()
-        mytft.setColor((0, 0, 0))
         parts = name.split(".") # get extension
         if len(parts) > 1:
             mode = parts[-1].lower()
@@ -44,15 +42,16 @@ def displayfile(mytft, name, width, height):
             imgheight = os.stat(name)[6] // (width * 2)
             skip = (height - imgheight) // 2
             if skip > 0:
-                mytft.fillRectangle(0, 0, width - 1, skip)
+                mytft.fillRectangle(0, 0, width - 1, skip, (0, 0, 0))
             else:
                 skip = 0
             for row in range(skip, height):
                 n = f.readinto(b)
                 if not n:
                     break
+                tft.TFT_io.swapbytes(b, width * 2)
                 mytft.drawBitmap(0, row, width, 1, b, 16)
-            mytft.fillRectangle(0, row, width - 1, height - 1)
+            mytft.fillRectangle(0, row, width - 1, height - 1, (0, 0, 0))
         elif mode == "bmp":  # Windows bmp file
             BM, filesize, res0, offset = unpack("<hiii", f.read(14))
             (hdrsize, imgwidth, imgheight, planes, colors, compress, imgsize, 
@@ -60,7 +59,7 @@ def displayfile(mytft, name, width, height):
             if imgwidth <= width: ##
                 skip = ((height - imgheight) // 2)
                 if skip > 0:
-                    mytft.fillRectangle(0, height - skip, width - 1, height - 1)
+                    mytft.fillRectangle(0, height - skip, width - 1, height - 1, (0, 0, 0))
                 else:
                     skip = 0
                 if colors in (1,4,8):  # must have a color table
@@ -91,7 +90,6 @@ def displayfile(mytft, name, width, height):
                             n = split_read(f, b, bsize)
                             if n != bsize:
                                 break
-                            tft.TFT_io.swapbytes(b, bsize)
                             mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
                     elif colors == 24:
                         bsize = imgwidth * 3
@@ -100,24 +98,24 @@ def displayfile(mytft, name, width, height):
                             n = split_read(f, b, bsize)
                             if n != bsize:
                                 break
-                            tft.TFT_io.swapcolors(b, bsize)
                             mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
-                mytft.fillRectangle(0, 0, width - 1, row)
+                mytft.fillRectangle(0, 0, width - 1, row, (0, 0, 0))
         elif mode == "data": # raw 24 bit format with rgb data (gimp export type data)
             b = bytearray(width * 3)
             imgheight = os.stat(name)[6] // (width * 3)
             skip = (height - imgheight) // 2
             if skip > 0:
-                mytft.fillRectangle(0, 0, width - 1, skip)
+                mytft.fillRectangle(0, 0, width - 1, skip, (0, 0, 0))
             else:
                 skip = 0
             for row in range(skip, height):
                 n = f.readinto(b)
                 if not n:
                     break
+                tft.TFT_io.swapcolors(b, width * 3)
                 mytft.drawBitmap(0, row, width, 1, b, 24)
-            mytft.fillRectangle(0, row, width - 1, height - 1)
-        mytft.setColor(color)
+            mytft.fillRectangle(0, row, width - 1, height - 1, (0, 0, 0))
+    mytft.backlight(100)
 
 def main(v_flip = False, h_flip = False):
 
@@ -243,6 +241,7 @@ def main(v_flip = False, h_flip = False):
         buf = bytearray(5000)
         with open ("logo50.raw", "rb") as f:
             n = f.readinto(buf)
+        tft.TFT_io.swapbytes(buf, 5000)
         for i in range(10):
             mytft.clrSCR()
             for cnt in range(50):
@@ -251,7 +250,7 @@ def main(v_flip = False, h_flip = False):
                 mytft.drawBitmap(x, y, 50, 50, buf, 16)
             pyb.delay(1000)
 
-    files = "F0012.bmp", "F0010.raw", "F0013.data","F0020_1.bmp", "F0020_2.bmp", "F0020_4.bmp", "F0020_8.bmp", "F0020.bmp"
+    files = "F0012.bmp", "F0010.raw", "F0013.data","F0020_1.bmp", "F0020_2.bmp", "F0020_4.bmp", "F0020_8.bmp", "F0020.bmp", "F0013.bmp"
 
     mytft.setTextStyle((255, 255, 255), None, KEEP_BG | INV_FG, dejavu14)
     while True:

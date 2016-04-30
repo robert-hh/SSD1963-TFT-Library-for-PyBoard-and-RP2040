@@ -664,6 +664,7 @@ def fillSCR_AS(r0, r1):  # r0: ptr to data, r1: number of pixels (3 bytes/pixel)
 #
 @micropython.asm_thumb
 def displaySCR_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/pixel)
+# Color oder is blue-gree-red
 # set up pointers to GPIO
 # r5: bit mask for control lines
 # r6: GPIOA ODR register ptr
@@ -676,7 +677,7 @@ def displaySCR_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/
     b(loopend)
 
     label(loopstart)
-    ldrb(r2, [r0, 0])  # red   
+    ldrb(r2, [r0, 2])  # red   
     strb(r2, [r6, 0])  # Store red
     strb(r5, [r7, 2])  # WR low
     strb(r5, [r7, 0])  # WR high
@@ -686,7 +687,7 @@ def displaySCR_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/
     strb(r5, [r7, 2])  # WR low
     strb(r5, [r7, 0])  # WR high
     
-    ldrb(r2, [r0, 2])  # blue
+    ldrb(r2, [r0, 0])  # blue
     strb(r2, [r6, 0])  # store blue
     strb(r5, [r7, 2])  # WR low
     strb(r5, [r7, 0])  # WR high
@@ -704,6 +705,7 @@ def displaySCR_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/
 #
 @micropython.asm_thumb
 def displaySCR565_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 bytes/pixel)
+# Color oder is blue-gree-red
 # set up pointers to GPIO
 # r5: bit mask for control lines
 # r6: GPIOA ODR register ptr
@@ -717,17 +719,17 @@ def displaySCR565_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 byt
 
     label(loopstart)
 
-    ldrb(r2, [r0, 0])  # red   
+    ldrb(r2, [r0, 1])  # red   
     mov (r3, 0xf8)     # mask out lower 3 bits
     and_(r2, r3)        
     strb(r2, [r6, 0])  # Store red
     strb(r5, [r7, 2])  # WR low
     strb(r5, [r7, 0])  # WR high
 
-    ldrb(r2, [r0, 0])  # pre green
+    ldrb(r2, [r0, 1])  # pre green
     mov (r3, 5)        # shift 5 bits up to 
     lsl(r2, r3)
-    ldrb(r4, [r0, 1])  # get the next 3 bits
+    ldrb(r4, [r0, 0])  # get the next 3 bits
     mov (r3, 3)        # shift 3 to the right
     lsr(r4, r3)
     orr(r2, r4)        # add them to the first bits
@@ -737,7 +739,7 @@ def displaySCR565_AS(r0, r1):  # r0: ptr to data, r1: is number of pixels (3 byt
     strb(r5, [r7, 2])  # WR low
     strb(r5, [r7, 0])  # WR high
     
-    ldrb(r2, [r0, 1])  # blue
+    ldrb(r2, [r0, 0])  # blue
     mov (r3, 3)
     lsl(r2, r3)
     strb(r2, [r6, 0])  # store blue
