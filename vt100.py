@@ -83,7 +83,7 @@ class VT100:
                 if col > 1: 
                     self.goto(row, col - 1)
             elif ord(c) == 0x0c: # Form feed = clear screen
-                self.clear_screen()
+                self.tft.printClrSCR()
             elif ord(c) == 0x1b:
                 self.state = 1
             elif ord(c) == 0x9b:
@@ -116,6 +116,8 @@ class VT100:
                 self.goto(row,col) # restore cursor
                 self.state = 0
             else:
+                self.tft.printChar('\x1b')
+                self.tft.printChar(c)
                 self.state = 0
         elif self.state == 2: # collecting command data
             if c.isalpha(): # command collection finished; execute it
@@ -258,7 +260,7 @@ class VT100:
                                 self.tft.setScrollArea(tfa, vsa, bfa)
                                                        
                 else: # not implemented
-                    pass
+                    self.tft.printString('\x1b[' + self.p_string + cmd)
             else: # not terminated, collect parameters
                 self.p_string += c
         else:
