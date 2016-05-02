@@ -343,7 +343,7 @@ class TFT:
         colorvect = self.BGcolorvect if color is None else bytearray(color)
         self.clrXY()
         TFT_io.fillSCR_AS(colorvect, (self.disp_x_size + 1) * (self.disp_y_size + 1))
-#        self.setScrollArea(0, self.disp_y_size + 1, 0)
+        self.setScrollArea(0, self.disp_y_size + 1, 0)
         self.setScrollStart(0)
         self.setTextPos(0,0)
 #
