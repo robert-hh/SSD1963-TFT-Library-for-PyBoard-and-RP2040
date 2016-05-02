@@ -343,7 +343,7 @@ class TFT:
         colorvect = self.BGcolorvect if color is None else bytearray(color)
         self.clrXY()
         TFT_io.fillSCR_AS(colorvect, (self.disp_x_size + 1) * (self.disp_y_size + 1))
-        self.setScrollArea(0, self.disp_y_size + 1, 0)
+#        self.setScrollArea(0, self.disp_y_size + 1, 0)
         self.setScrollStart(0)
         self.setTextPos(0,0)
 #
@@ -646,18 +646,13 @@ class TFT:
             self.transparency = transparency
         if gap is not None:
             self.text_gap = gap
-        self.text_color = bytearray(0)
         if bgcolor is not None:
             self.text_bgcolor = bgcolor
         if fgcolor is not None:
             self.text_fgcolor = fgcolor
-        if transparency is not None:
-            self.transparency = transparency
         self.text_color = (bytearray(self.text_bgcolor)
                            + bytearray(self.text_fgcolor)
                            + bytearray([self.transparency]))
-        if gap is not None:
-            self.text_gap = gap
 #
 # Get Text Style: return (color, bgcolor, font, transpareny, gap)
 #
@@ -738,7 +733,7 @@ class TFT:
                 return 0
 # Retrieve Background data if transparency is required
         if self.transparency: # in case of transpareny, the frame buffer content is needed
-            if not bg_buf:    # buffer allocation needed?
+            if bg_buf is None:    # buffer allocation needed?
                 bg_buf = bytearray(pix_count * 3) # sigh...
             self.setXY(self.text_x, self.text_y, self.text_x + cols - 1, self.text_y + rows - 1) # set area
             TFT_io.tft_read_cmd_data_AS(0x2e, bg_buf, pix_count * 3) # read background data
