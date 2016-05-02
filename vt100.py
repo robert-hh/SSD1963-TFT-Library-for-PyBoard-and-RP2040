@@ -40,14 +40,9 @@ class VT100:
         self.scroll_first = 1
         self.scroll_last = self.text_rows
         self.state = 0
-        self.clear_screen()
+        self.tft.printClrSCR()
         self.tft.backlight(100) # Backlight on
         self.saved_row = self.saved_col = 1
-        
-    def clear_screen(self): # clear screen
-        self.tft.printClrSCR()
-        self.goto(self.scroll_first, 1)
-
         
     def cursor(self):  #  toggle cursor
         x,y = self.tft.getTextPos()
@@ -63,7 +58,6 @@ class VT100:
         # col, row are 1-based, TFT cooedinates are 0-based
         self.tft.setTextPos((col - 1) * self.hor, (row - 1) * self.vert , scroll = False)
 
-        
     def get_row_col(self): # get column and row from tft text position 
         x, y = self.tft.getTextPos()
         return (y // self.vert) + 1, (x // self.hor) + 1
@@ -199,7 +193,7 @@ class VT100:
                             self.tft.printClrLine(2)
                         self.goto(row, col)
                     elif mode == 2: # clear screen
-                        self.clear_screen()
+                        self.tft.printClrSCR()
                 elif cmd == "s":  # save cursor
                     self.saved_row, self.saved_col = self.get_row_col()
                 elif cmd == "u":  # restore cursor
@@ -215,12 +209,12 @@ class VT100:
                 elif cmd == "m":  # set text attributes
                     if parmlist[0] == "": # replace an empty parmlist with reset value
                         parmlist[0] = "0"
+                    fgcolor = [255, 255, 255]
+                    bgcolor = [0, 0, 0]
+                    scaling = 0.75
+                    inv = False
                     for parm in parmlist:
                         val = int(parm)
-                        fgcolor = [255, 255, 255]
-                        bgcolor = [0, 0, 0]
-                        scaling = 0.75
-                        inv = False
                         if val == 0: # default
                             fgcolor = [255, 255, 255]
                             bgcolor = [0, 0, 0]
