@@ -183,7 +183,8 @@ specified by setColor() is taken.
 **drawBitmap(x, y, width, height, data, bits=24 [, colortable])**  
 Display a bitmap at location **x**, **y** and dimension **width** x **height**.
 **data** must contain the bitmap data and must be of type bytearray or buffer.
-**bits** tells how many bits per pixel the data must have:
+**bits** tells how many bits per pixel the data must have:  
+
 * bits = **1**: The data must contain 1 bit per pixel. The colors to be use  must
 be supplied in the colortable, 4 bytes per value in the order
 blue, green, red, 0. If colortable is None, the values for color and
@@ -201,7 +202,7 @@ must be supplied in the colortable, 4 bytes per value in the order
 blue, green, red, 0. This matches the BMP file type with 8 bits per pixel
 The total size of data must be width \* height.
 * bits = **16**: The data must contain 2 bytes per pixel with packed color
-data (rrrrrggggggbbb) in little endian format (the byte with blue first).
+data (rrrrrggggggbbbbb) in little endian format (the byte with blue first).
 This order matches the 16 bit BMP file type. The total size of data must be
 width \* height \* 2.
 * bits = **24** (default): The data must contain 3 bytes per pixel
