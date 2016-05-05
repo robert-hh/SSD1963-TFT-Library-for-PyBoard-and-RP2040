@@ -633,8 +633,11 @@ class TFT:
 #
 # Get text position
 #
-    def getTextPos(self):
-        return (self.text_x, self.text_yabs)
+    def getTextPos(self, abs = True):
+        if abs:
+            return (self.text_x, self.text_yabs)
+        else:
+            return (self.text_x, self.text_y)
 #
 # Set Text Style
 #

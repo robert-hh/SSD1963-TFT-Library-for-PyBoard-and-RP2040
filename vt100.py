@@ -3,7 +3,7 @@
 #
 import os, gc, pyb
 
-import tft 
+import tft
 from font7hex import font7hex
 
 DIM_BG  = const(1)  # dim background data for text
@@ -37,6 +37,11 @@ class VT100:
         # set scroll area in relation to the font size, full size
         self.tft.setScrollArea(0 , self.g_height, self.unused)
         self.tft.setTextStyle(fgcolor = (190, 190, 190), bgcolor = (0, 0, 0), font = self.font)
+        self.fgcolor = [255, 255, 255]
+        self.bgcolor = [0, 0, 0]
+        self.scaling = 0.75
+        self.inv = False
+        self.underscore = False
         self.scroll_first = 1
         self.scroll_last = self.text_rows
         self.state = 0
@@ -84,7 +89,10 @@ class VT100:
                 self.state = 2
                 self.p_string = ""
             else: # just print the char
-                self.tft.printChar(c)
+                size = self.tft.printChar(c)
+                if self.underscore:
+                    x,y = self.tft.getTextPos(False)
+                    self.tft.drawHLine(x - size, y + self.vert - 1, size, self.fgcolor)
         elif self.state == 1: # waiting for [ as next char
             if c == "[":
                 self.state = 2
@@ -209,30 +217,35 @@ class VT100:
                 elif cmd == "m":  # set text attributes
                     if parmlist[0] == "": # replace an empty parmlist with reset value
                         parmlist[0] = "0"
-                    fgcolor = [255, 255, 255]
-                    bgcolor = [0, 0, 0]
-                    scaling = 0.75
-                    inv = False
                     for parm in parmlist:
                         val = int(parm)
                         if val == 0: # default
-                            fgcolor = [255, 255, 255]
-                            bgcolor = [0, 0, 0]
-                            scaling = 0.75
+                            self.fgcolor = [255, 255, 255]
+                            self.bgcolor = [0, 0, 0]
+                            self.scaling = 0.75
+                            self.inv = False
+                            self.underscore = False
                         if val == 1: # bright
-                            scaling = 1
+                            self.scaling = 1
                         elif val == 2: # dim
-                            scaling = 0.4
+                            self.scaling = 0.4
+                        elif val == 3: # standard
+                            self.scaling = 0.75
+                        elif val == 4: # underscore
+                            self.underscore = True
                         elif val == 7: # reverse
-                            inv = True
+                            self.inv = True
                         elif 30 <= val <= 37:
-                            fgcolor = self.colortable[val % 10]
+                            self.fgcolor = self.colortable[val % 10]
                         elif 40 <= val <= 47:
-                            bgcolor = self.colortable[val % 10]
-                    for i in range (3): # scale brightness
-                        fgcolor[i] = int(fgcolor[i] * scaling)
-                        bgcolor[i] = int(bgcolor[i] * scaling)
-                    if inv:
+                            self.bgcolor = self.colortable[val % 10]
+                    fgcolor = (int(self.fgcolor[0] * self.scaling),                                 
+                               int(self.fgcolor[1] * self.scaling),
+                               int(self.fgcolor[2] * self.scaling))
+                    bgcolor = (int(self.bgcolor[0] * self.scaling), 
+                               int(self.bgcolor[1] * self.scaling),
+                               int(self.bgcolor[2] * self.scaling))
+                    if self.inv:
                         fgcolor, bgcolor = bgcolor, fgcolor
                     self.tft.setTextStyle(fgcolor=fgcolor, bgcolor=bgcolor)
                 elif cmd == "r":    # Scrolling
@@ -273,34 +286,34 @@ def test():
     cmd = ""
     while cmd != "q":
         tty.printStr('\x0c')
-        tty.printStr("Lorem ipsum dolor sit amet, consectetuer adipiscing elit.\r\n")
-        tty.printStr("Aenean commodo ligula eget dolor. Aenean massa.\r\n")
-        tty.printStr("Cum sociis natoque penatibus et magnis dis parturient,\r\n")
-        tty.printStr("nascetur ridiculus mus. Donec quam felis, ultricies\r\n")
-        tty.printStr("nec, pellentesque eu, pretium quis, sem.\r\n")
-        tty.printStr("Nulla consequat massa quis enim. Donec pede justo,\r\n")
-        tty.printStr("vel, aliquet nec, vulputate eget, arcu. In enim justo,\r\n")
-        tty.printStr("rhoncus ut, imperdiet a, venenatis vitae, justo.\r\n")
-        tty.printStr("Felis eu pede mollis pretium. Integer tincidunt.\r\n")
-        tty.printStr("Cras dapibus. Vivamus elementum semper nisi.\r\n")
-        tty.printStr("Aenean vulputate eleifend tellus. Aenean leo ligula,\r\n")
-        tty.printStr("porttitor eu, consequat vitae, eleifend ac, enim.\r\n")
-        tty.printStr("Aliquam lorem ante, dapibus in, viverra quis, feugiat a, \r\n")
-        tty.printStr("tellus. Phasellus viverra nulla ut metus varius laoreet.\r\n")
-        tty.printStr("Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel \r\n")
-        tty.printStr("augue. Curabitur ullamcorper ultricies nisi.\r\n")
-        tty.printStr("Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget\r\n")
-        if True:
-            tty.printStr("condimentum rhoncus, sem quam semper libero, sit amet\r\n")
-            tty.printStr("sem neque sed ipsum. Nam quam nunc, blandit vel, luctus\r\n")
-            tty.printStr("*\t*\r\n")
-            tty.printStr("****\b\t*\r\n")
-            tty.printStr("\r\n")
-            tty.printStr("  ----------- VT100 emulation test -------------- \r\n") 
-            tty.printStr("If the text starts with [, an ESC will be added upfront\r\n")
-            tty.printStr("If the text starts with \\, this will be replced by ESC\r\n")
-            tty.printStr("If the text ends with -, it will be printed w/o CR-LF\r\n")
-            tty.printStr("Otherwise the text will be printed, followed by CR-LF\r\n")
+        tty.printStr("Far far away, behind the word mountains, far from the\r\n")
+        tty.printStr("countries Vokalia and Consonantia, there live the blind\r\n")
+        tty.printStr("texts. Separated they live in Bookmarksgrove right at\r\n")
+        tty.printStr("the coast of the Semantics, a large language ocean.\r\n")
+        tty.printStr("A small river named Duden flows by their place and\r\n")
+        tty.printStr("supplies it with the necessary regelialia. It is a\r\n")
+        tty.printStr("paradisematic country, in which roasted parts of\r\n")
+        tty.printStr("sentences fly into your mouth. Even the all-powerful\r\n")
+        tty.printStr("Pointing has no control about the blind texts it is an\r\n")
+        tty.printStr("almost unorthographic life. One day however a small line\r\n")
+        tty.printStr("of blind text by the name of Lorem Ipsum decided to \r\n")
+        tty.printStr("leave for the far World of Grammar. The Big Oxmox advised\r\n")
+        tty.printStr("her not to do so, because there were thousands of bad\r\n")
+        tty.printStr("Commas, wild Question Marks and devious Semikoli, but\r\n")
+        tty.printStr("the Little Blind Text didn't listen. \r\n")
+        tty.printStr("She packed her seven versalia, put her initial into the\r\n")
+        tty.printStr("belt and made herself on the way. When she reached the\r\n")
+        tty.printStr("first hills of the Italic Mountains, she had a last view\r\n")
+        tty.printStr("back on the skyline of her hometown Bookmarksgrove, the\r\n")
+        tty.printStr("headline of Alphabet Village and the subline of her\r\n")
+        tty.printStr("own road, the Line Lane. Pityful a rethoric question ran\r\n")
+        tty.printStr("over her cheek.\r\n")
+        tty.printStr("\r\n")
+        tty.printStr("  ----------- VT100 emulation test -------------- \r\n") 
+        tty.printStr("If the text starts with [, an ESC will be added upfront\r\n")
+        tty.printStr("If the text starts with \\, this will be replced by ESC\r\n")
+        tty.printStr("If the text ends with -, it will be printed w/o CR-LF\r\n")
+        tty.printStr("Otherwise the text will be printed, followed by CR-LF\r\n")
         cmd = " "
         while cmd != "q" and cmd != "":
             cmd = input("Command: ")

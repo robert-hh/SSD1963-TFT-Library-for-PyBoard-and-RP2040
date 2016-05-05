@@ -47,7 +47,8 @@ the right order - intentionally, I assume. For speed, the lower level functions
 are coded as viper or assembler functions. Obviously, the Assembler versions
 are little bit faster, at the cost of LOC. The total advantage of using
 assembler may be limited. The assembler functions need 220ns to 260ns to send
-the three bytes of a display pixel, in contrast to the about 4 µs needed to call this function. On the upside of this 8 bit interface choice is, that you can supply
+the three bytes of a display pixel, in contrast to the about 4 µs needed to call
+this function. On the upside of this 8 bit interface choice is, that you can supply
  up to 24 bit of color data, in contrast to the 16 bit when using the 16 bit interface.
 
 In total, the speed is reasonable. Clearing the 480x272 display (= filling it
@@ -69,9 +70,12 @@ used e.g. by clearSCR() or fillRectangle().
 ### Create instance
 
 **mytft = TFT(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])**  
-Create an instance of the tft class, initialize the controller and clear the screen. Parameters:  
-**controller**: String with the controller model. At the moment, "SSD1963" is the only one supported  
-**lcd_type**: type of LCD. At the moment, "LB04301" (480x272, 4.3") and "AT070TN92" (800x480, 7") are supported.  
+Create an instance of the tft class, initialize the controller and clear
+the screen. Parameters:  
+**controller**: String with the controller model. At the moment, "SSD1963"
+is the only one supported  
+**lcd_type**: type of LCD. At the moment, "LB04301" (480x272, 4.3") and
+"AT070TN92" (800x480, 7") are supported.  
 **orientation**: which is LANDSCAPE or PORTRAIT  
 **flip_vertical**: Flip vertical True/False  
 **flip_horizontal**: Flip horizontal True/False  
@@ -459,8 +463,10 @@ into files needed by this library. All fonts can be stored in frozen bytecode.
 - \*.raw, \*.data, \*.bmp: Sample bitmap files with
     * 565 encoding (16 bits per Pixel) (\*.raw),
     * 24 bits per Pixel raw data, generated with Gimp export raw (\*.data), and
-    * windows bitmap files with 1, 4, 8, 16 or 24 colors (\*.bmp). The tft_test.py script shows how to display them on the TFT.
-- TFT_Adaper_for_PyBoard_3.zip: A PCB sketch for an adapter PCB, created with KiCad, including a PyBoard module.
+    * windows bitmap files with 1, 4, 8, 16 or 24 colors (\*.bmp). The
+    tft_test.py script shows how to display them on the TFT.
+- TFT_Adaper_for_PyBoard_3.zip: A PCB sketch for an adapter PCB, created
+with KiCad, including a PyBoard module.
 
 # Remarks
 **To Do**
@@ -470,10 +476,35 @@ into files needed by this library. All fonts can be stored in frozen bytecode.
 - Try other display sizes than 480x272 and 800x480
 - Other Controllers
 
+**Observations about code speed**
+
+It may be intersting, to tell the time micopython needs to call a function. The
+table below gives an estimate. An empty function was called with zero to
+four arguments, each supplied as a constant. The function body was pass or nop().
+Each function was called 10.000 times. The time for the loop was determined
+before and subtracted. The time unit is µs.
+
+|Code type|0|1|2|3|4|
+|:---|:---:|:---:|:---:|:---:|---:|
+|Assembler|3.3|3.6|4.0|4.4|4.7|
+|Viper|3.3|3.6|4.0|4.4|4.7|
+|Python|6.5|6.7|7.0|7.3|7.5|
+
+As an example: the function setXY(), coded in assembler, needs 0.9 µs for the
+execution of the function body, but calling it and returning needs at least
+additional 4.7 µs. In a real coding situation, observed 6 µs. The function
+drawPixel(), when used to fill the whole screen, takes 9 µs for a call, in
+contrat to about 1µs the net function body takes for it's task.
+Comparing the same job implemented in Viper or Assembler code, the Viper code is
+about twices as long and therefore takes about twices as long. Nevertheless,
+it's easier to read & write. Thus, I typically implemented the Viper version
+first, and then translated the simple ones into Assmbler.
+
 # Short Version History
 
 **0.1** Initial Release
-Initial release with some basic functions, limited to a 480x272 display in landscape mode and PyBoard. More a proof of feasibilty.
+Initial release with some basic functions, limited to a 480x272 display in
+landscape mode and PyBoard. More a proof of feasibilty.
 
 **0.2** Portrait and Landscape mode
 
@@ -484,31 +515,39 @@ Initial release with some basic functions, limited to a 480x272 display in lands
 
 - Font widths do not have to be a multiple of 8 any more.
 - Added drawCantedRectangle() and fillCantedrectangle().
-- Changed the arguments of the constructor to name the controller and lcd type instead of controller and dimensions. The lcd type defines the size, the default orientation and the required initialization code.
+- Changed the arguments of the constructor to name the controller and lcd
+type instead of controller and dimensions. The lcd type defines the size,
+the default orientation and the required initialization code.
 - Provided a dummy font.
 
 **0.4** (no real changes to the TFT class)
 
-- Some explanations on how to determine the LCD settings of the SSD1963 from the LCD data sheet, embedded in the source file.
-- The graphic file conversion for displaying as a RGB data bitmap is nicely done by Gimp, the Swiss Army Knife of graphics. Just export the picture as raw data!
+- Some explanations on how to determine the LCD settings of the SSD1963
+from the LCD data sheet, embedded in the source file.
+- The graphic file conversion for displaying as a RGB data bitmap is nicely done
+by Gimp, the Swiss Army Knife of graphics. Just export the picture as raw data!
 
 **0.5** Split up files
 
 - Split up the class files and the font files
 - Some testing and fixing of little bugs
-- Changed the byte order in drawBitmap_565(), displaySCR565 and displaySCR565_AS. Now it is consistent to the bmp 65k color file type.
+- Changed the byte order in drawBitmap_565(), displaySCR565 and
+displaySCR565_AS. Now it is consistent to the bmp 65k color file type.
 
 **0.6** Changed to the PCB Layout and Backlight
 
 - added two functions to switch BG LED and power on/off, just to encapsulate these.
-- added two variants of the PCB sketches. The 3rd variant uses a pair of transistors to switch the power
-on and off, instead of the special power regulator which seems hard to get.
-- moved the connection to the touchpad to other ports, such that both UART1 and SPI2 stay available.
+- added two variants of the PCB sketches. The 3rd variant uses a pair of
+transistors to switch the power on and off, instead of the special power
+regulator which seems hard to get.
+- moved the connection to the touchpad to other ports, such that both UART1
+and SPI2 stay available.
 
-**0.7** Changed text printing and font handling completely, with the kind cooperation of Peter Hinch
+**0.7** Changed text printing and font handling completely, with the kind
+cooperation of Peter Hinch
 
-- changed the text print method, which requires now three functions calls, setTextStyle(), setTextPos()
-and printString() or printChar()
+- changed the text print method, which requires now three functions calls,
+setTextStyle(), setTextPos() and printString() or printChar()
 - changed backlight(on/off) to backlight(brightness)
 - some minor changes to the interface PCB layout
 
