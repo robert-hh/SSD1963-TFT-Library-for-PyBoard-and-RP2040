@@ -197,90 +197,58 @@ def setXY_L(r0, r1, r2, r3):
     add (r6, stm.GPIO_ODR)
     movwt(r7, stm.GPIOB)
     add (r7, stm.GPIO_BSRRL)
-# Emit command byte
-    movw(r5, WR | D_C)
-    mov (r4, 0x2a)
+    b(start)
+#inline subroutine
+    label(send)
     strb(r4, [r6, 0])  # set command byte
     strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
     strh(r5, [r7, 0])  # WR and D_C high
+    bx(lr)
+# Emit command byte
+    label(start)
+    movw(r5, WR | D_C)
+    mov (r4, 0x2a)
+    bl(send)
 
     mov(r5, 8)
     mov(r4, r0)  # get x1
     asr(r4, r5)  # get the upper byte
     mov(r5, WR)
-    strb(r4, [r6, 0])  # Store upper x1
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r0, [r6, 0])  # Store lower x1
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r0)
+    bl(send)
 
     mov(r0, 8)  # from here on r0 keeps 8
     mov(r4, r2)  # get x2
     asr(r4, r0)  # get the upper byte
-    strb(r4, [r6, 0])  # Store upper x2
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r2, [r6, 0])  # Store lower x2
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r2)
+    bl(send)
 # Emit command byte
     movw(r5, WR | D_C)
     mov (r4, 0x2b)
-    strb(r4, [r6, 0])  # set command byte
-    strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
     mov(r5, WR)
     mov(r4, r1)  # get y1
     asr(r4, r0)  # get the upper byte
-    strb(r4, [r6, 0])  # Store upper y1
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r1, [r6, 0])  # Store lower y1
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r1)
+    bl(send)
 
     mov(r4, r3)  # get x2
     asr(r4, r0)  # get the upper byte
-    strb(r4, [r6, 0])  # Store upper y2
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r3, [r6, 0])  # Store lower y2
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r3)
+    bl(send)
 # Emit command byte
     movw(r5, WR | D_C)
     mov (r4, 0x2c)
-    strb(r4, [r6, 0])  # set command byte
-    strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 # and done    
 @micropython.asm_thumb
 def setXY_P(r0, r1, r2, r3):  
@@ -294,90 +262,58 @@ def setXY_P(r0, r1, r2, r3):
     add (r6, stm.GPIO_ODR)
     movwt(r7, stm.GPIOB)
     add (r7, stm.GPIO_BSRRL)
-# Emit command byte
-    movw(r5, WR | D_C)
-    mov (r4, 0x2b)
+    b(start)
+#inline subroutine
+    label(send)
     strb(r4, [r6, 0])  # set command byte
     strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
     strh(r5, [r7, 0])  # WR and D_C high
+    bx(lr)
+# Emit command byte
+    label(start)
+    movw(r5, WR | D_C)
+    mov (r4, 0x2b)
+    bl(send)
 
     mov(r5, 8)
     mov(r4, r0)  # get x1
     asr(r4, r5)  # get the upper byte
     mov(r5, WR)
-    strb(r4, [r6, 0])  # Store upper x1
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r0, [r6, 0])  # Store lower x1
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r0)
+    bl(send)
 
     mov(r0, 8)  # from here on r0 keeps 8
     mov(r4, r2)  # get x2
     asr(r4, r0)  # get the upper byte
-    strb(r4, [r6, 0])  # Store upper x2
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r2, [r6, 0])  # Store lower x2
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r2)
+    bl(send)
 # Emit command byte
     movw(r5, WR | D_C)
     mov (r4, 0x2a)
-    strb(r4, [r6, 0])  # set command byte
-    strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
     mov(r5, WR)
     mov(r4, r1)  # get y1
     asr(r4, r0)  # get the upper byte
-    strb(r4, [r6, 0])  # Store upper y1
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r1, [r6, 0])  # Store lower y1
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r1)
+    bl(send)
 
     mov(r4, r3)  # get x2
     asr(r4, r0)  # get the upper byte
-    strb(r4, [r6, 0])  # Store upper y2
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r3, [r6, 0])  # Store lower y2
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r3)
+    bl(send)
 # Emit command byte
     movw(r5, WR | D_C)
     mov (r4, 0x2c)
-    strb(r4, [r6, 0])  # set command byte
-    strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 # and done    
 #
 # Assembler version of 
@@ -395,107 +331,68 @@ def drawPixel_L(r0, r1, r2):
     add (r6, stm.GPIO_ODR)
     movwt(r7, stm.GPIOB)
     add (r7, stm.GPIO_BSRRL)
-# Emit command byte
-    movw(r5, WR | D_C)
-    mov (r4, 0x2a)
+    b(start)
+#inline subroutine
+    label(send)
     strb(r4, [r6, 0])  # set command byte
     strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
     strh(r5, [r7, 0])  # WR and D_C high
+    bx(lr)
+# Emit command byte
+    label(start)
+    movw(r5, WR | D_C)
+    mov (r4, 0x2a)
+    bl(send)
 
-    mov(r3, 8)
-    mov(r4, r0)  # get x
-    asr(r4, r3)  # get the upper byte
+    mov(r5, 8)
+    mov(r4, r0)  # get x1
+    asr(r4, r5)  # get the upper byte
     mov(r5, WR)
-    strb(r4, [r6, 0])  # Store upper x
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r0, [r6, 0])  # Store lower x
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r0)
+    bl(send)
 
-    strb(r4, [r6, 0])  # Store upper x
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r0, 8)  # from here on r0 keeps 8
+    mov(r4, r2)  # get x2
+    asr(r4, r0)  # get the upper byte
+    bl(send)
 
-    strb(r0, [r6, 0])  # Store lower x
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r2)
+    bl(send)
 # Emit command byte
     movw(r5, WR | D_C)
     mov (r4, 0x2b)
-    strb(r4, [r6, 0])  # set command byte
-    strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
     mov(r5, WR)
-    mov(r4, r1)  # get y
-    asr(r4, r3)  # get the upper byte
-    strb(r4, [r6, 0])  # Store upper y
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r1)  # get y1
+    asr(r4, r0)  # get the upper byte
+    bl(send)
 
-    strb(r1, [r6, 0])  # Store lower y
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r1)
+    bl(send)
 
-    strb(r4, [r6, 0])  # Store upper y
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r3)  # get x2
+    asr(r4, r0)  # get the upper byte
+    bl(send)
 
-    strb(r1, [r6, 0])  # Store lower y
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r3)
+    bl(send)
 # Emit command byte
     movw(r5, WR | D_C)
     mov (r4, 0x2c)
-    strb(r4, [r6, 0])  # set command byte
-    strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
-    mov(r5, WR)
+    bl(send)
 # Send color 
+    mov(r5, WR)
     ldrb(r4, [r2, 0])  # red   
-    strb(r4, [r6, 0])  # Store red
-    strb(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strb(r5, [r7, 0])  # WR high
+    bl(send)
 
     ldrb(r4, [r2, 1])  # green
-    strb(r4, [r6, 0])  # store greem
-    strb(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strb(r5, [r7, 0])  # WR high
+    bl(send)
     
     ldrb(r4, [r2, 2])  # blue
-    strb(r4, [r6, 0])  # store blue
-    strb(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strb(r5, [r7, 0])  # WR high
+    bl(send)
 # and done    
 #
 # Assembler version of 
@@ -513,107 +410,68 @@ def drawPixel_P(r0, r1, r2):
     add (r6, stm.GPIO_ODR)
     movwt(r7, stm.GPIOB)
     add (r7, stm.GPIO_BSRRL)
-# Emit command byte
-    movw(r5, WR | D_C)
-    mov (r4, 0x2b)
+    b(start)
+#inline subroutine
+    label(send)
     strb(r4, [r6, 0])  # set command byte
     strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
     strh(r5, [r7, 0])  # WR and D_C high
+    bx(lr)
+# Emit command byte
+    label(start)
+    movw(r5, WR | D_C)
+    mov (r4, 0x2b)
+    bl(send)
 
-    mov(r3, 8)
-    mov(r4, r0)  # get x
-    asr(r4, r3)  # get the upper byte
+    mov(r5, 8)
+    mov(r4, r0)  # get x1
+    asr(r4, r5)  # get the upper byte
     mov(r5, WR)
-    strb(r4, [r6, 0])  # Store upper x
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
-    strb(r0, [r6, 0])  # Store lower x
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r0)
+    bl(send)
 
-    strb(r4, [r6, 0])  # Store upper x
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r0, 8)  # from here on r0 keeps 8
+    mov(r4, r2)  # get x2
+    asr(r4, r0)  # get the upper byte
+    bl(send)
 
-    strb(r0, [r6, 0])  # Store lower x
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r2)
+    bl(send)
 # Emit command byte
     movw(r5, WR | D_C)
     mov (r4, 0x2a)
-    strb(r4, [r6, 0])  # set command byte
-    strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    bl(send)
 
     mov(r5, WR)
-    mov(r4, r1)  # get y
-    asr(r4, r3)  # get the upper byte
-    strb(r4, [r6, 0])  # Store upper y
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r1)  # get y1
+    asr(r4, r0)  # get the upper byte
+    bl(send)
 
-    strb(r1, [r6, 0])  # Store lower y
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r1)
+    bl(send)
 
-    strb(r4, [r6, 0])  # Store upper y
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r3)  # get x2
+    asr(r4, r0)  # get the upper byte
+    bl(send)
 
-    strb(r1, [r6, 0])  # Store lower y
-    strh(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
+    mov(r4, r3)
+    bl(send)
 # Emit command byte
     movw(r5, WR | D_C)
     mov (r4, 0x2c)
-    strb(r4, [r6, 0])  # set command byte
-    strh(r5, [r7, 2])  # WR and D_C low
-    nop()
-    nop()
-    strh(r5, [r7, 0])  # WR and D_C high
-    mov(r5, WR)
+    bl(send)
 # Send color 
+    mov(r5, WR)
     ldrb(r4, [r2, 0])  # red   
-    strb(r4, [r6, 0])  # Store red
-    strb(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strb(r5, [r7, 0])  # WR high
+    bl(send)
 
     ldrb(r4, [r2, 1])  # green
-    strb(r4, [r6, 0])  # store greem
-    strb(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strb(r5, [r7, 0])  # WR high
+    bl(send)
     
     ldrb(r4, [r2, 2])  # blue
-    strb(r4, [r6, 0])  # store blue
-    strb(r5, [r7, 2])  # WR low
-    nop()
-    nop()
-    strb(r5, [r7, 0])  # WR high
+    bl(send)
 # Assembler version of 
 # Fill screen by writing size pixels with the color given in data
 # data must be 3 bytes of red, green, blue
