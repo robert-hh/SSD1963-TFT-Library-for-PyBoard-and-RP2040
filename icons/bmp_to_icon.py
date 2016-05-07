@@ -1,6 +1,32 @@
+#!/usr/bin/env python3
+
+# Convert a BMP source file to Python source.
+
+# Copyright Robert Hammelrath and Peter Hinch 2016
+# Released under the MIT licence
+# Files created by any graphic tool exporting bmp files, e.g. gimp
+# the colour depth may be 1, 4, 8, 16, or 24 pixels, lower sizes preferred
+
+# Usage:
+# ./bmp_to_icon checkbox_on.bmp checkbox_off.bmp
+# puts files into a single Python file defaulting to icons.py (-o name can override default)
+# with a dictionary 'icons' indexed by a number.
+# The generated icon pathon script also defines a function get_icon(index) 
+# for accessing an icon, which returns a tuple which can directly supplied 
+# into the drawBitmap() function of the tft lib.
+# -------------------------
+# Example: Assuming an icons file called icons.py.
+# then the sript usign it could look like:
 #
-# Some sample code
-#
+# import tft
+# import icons
+# .....
+# mytft = tft.TFT()
+# .....
+# mytft.drawBitmap(x1, y1, *icons.get_icon(0))  # draw the first icon at location x1, y1
+# mytft.drawBitmap(x2, y2, *icons.get_icon(1))  # draw the scond icon at location x2, y2
+
+
 import os
 import argparse
 from struct import unpack
