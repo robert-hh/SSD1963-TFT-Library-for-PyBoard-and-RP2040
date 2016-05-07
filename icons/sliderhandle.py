@@ -123,5 +123,8 @@ width = 24
 height = 52
 colors = 4
 
-def get_icon(no):
-    return width, height, addressof(_icons[no]), colors, addressof(colortable)
+def get_icon(index):
+    return width, height, addressof(_icons[index]), colors, addressof(colortable)
+    
+def draw(x, y, index, draw_fct):
+    draw_fct(x - width//2, y - height // 2, width, height, addressof(_icons[index]), colors, addressof(colortable))

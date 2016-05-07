@@ -4,26 +4,25 @@
 import tft
 import checkbox
 import radiobutton
+import switch
+import sliderpath
+import sliderhandle
 
 
 mytft = tft.TFT()
 mytft.backlight(100)
 mytft.clrSCR((255,255,255))
 
-mytft.drawBitmap(50, 50, *checkbox.get_icon(0))
-mytft.drawBitmap(50,100, *checkbox.get_icon(1))
-mytft.drawBitmap(50,150, *checkbox.get_icon(2))
+checkbox.draw(20, 20, 0, mytft.drawBitmap)
+checkbox.draw(20, 60, 1, mytft.drawBitmap)
+checkbox.draw(20, 100, 2, mytft.drawBitmap)
 
-mytft.drawBitmap(50,200, *radiobutton.get_icon(0))
-mytft.drawBitmap(100,200, *radiobutton.get_icon(1))
-mytft.drawBitmap(150,200, *radiobutton.get_icon(1))
+radiobutton.draw(20, 150, 1, mytft.drawBitmap)
+radiobutton.draw(60, 150, 0, mytft.drawBitmap)
+radiobutton.draw(100, 150, 0, mytft.drawBitmap)
 
+switch.draw(150, 20, 0, mytft.drawBitmap)
+switch.draw(150, 60, 1, mytft.drawBitmap)
 
-mytft.drawCircle(250, 216, 16, (150,150,150))
-mytft.drawCircle(250, 216, 15, (0,0,0))
-mytft.fillCircle(250, 216, 6, (0,255,0))
-mytft.drawCircle(300, 216, 16, (150,150,150))
-mytft.drawCircle(300, 216, 15, (0,0,0))
-mytft.drawCircle(350, 216, 16, (150,150,150))
-mytft.drawCircle(350, 216, 15, (0,0,0))
-
+sliderpath.draw(300, 130, 0, mytft.drawBitmap)
+sliderhandle.draw(300, 150, 1, mytft.drawBitmap)
