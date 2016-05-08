@@ -56,6 +56,54 @@ def split_read(f, buf, n):
 def getname(sourcefile):
     return os.path.basename(os.path.splitext(sourcefile)[0])
 
+# pack into bit from buf into res in bits sized chunks
+def explode(buf, res, offset, size, bits):
+    bm_ptr = 0
+    shift = 8 - bits
+    outmask = ((1 << bits) - 1)
+    bitmask = outmask << shift
+    for j in range(size):
+        res[offset] = ((buf[bm_ptr] & bitmask) >> shift) & outmask
+        bitmask >>= bits
+        shift -= bits
+        offset += 1
+        if bitmask == 0: # mask rebuild & data ptr advance on byte exhaust
+            shift = 8 - bits
+            bitmask = outmask << shift
+            bm_ptr += 1
+    return offset
+
+def implode(buf, size, colors):
+    op = 0
+    ip = 0
+    if colors == 1: # pack 8 in one
+        for ip in range(0, size, 8):
+            buf[op] = (buf[ip] << 7 |
+                       buf[ip + 1] << 6 |
+                       buf[ip + 2] << 5 |
+                       buf[ip + 3] << 4 |
+                       buf[ip + 4] << 3 |
+                       buf[ip + 5] << 2 |
+                       buf[ip + 6] << 1 |
+                       buf[ip + 7])
+            op += 1
+    elif colors == 2: # pack 4 in 1
+        for ip in range(0, size, 4):
+            buf[op] = (buf[ip] << 6 |
+                       buf[ip + 1] << 4 |
+                       buf[ip + 2] << 2 |
+                       buf[ip + 3])
+            op += 1
+    elif colors == 4: # pack 2 in 1
+        for ip in range(0, size, 2):
+            buf[op] = (buf[ip] << 4 |
+                       buf[ip + 1])
+            op += 1
+    else : # just copy
+        for ip in range(size):
+            buf[op] = buf[ip]
+            op += 1
+    return op
 
 def process(f, outfile):
 # 
@@ -97,17 +145,14 @@ def process(f, outfile):
         if icon_colortable is None:
             icon_colortable = colortable
         if colors == 1:
-            bsize = imgwidth // 8
-            if img_width % 8 != 0:
-                print ("Error: Icon width must be a multiple of 8")
-                return None
+            bsize = (imgwidth + 7) // 8
+            res = bytearray((imgwidth * imgheight * 8) + 8) # make it big enough
         elif colors == 4:
-            bsize = imgwidth // 2
-            if imgwidth % 2 != 0:
-                print ("Error: Icon width must be a multiple of 2")
-                return None
+            bsize = (imgwidth + 1) // 2
+            res = bytearray((imgwidth * imgheight * 2) + 2) # make it big enough
         elif colors == 8:
             bsize = imgwidth
+            res = bytearray((imgwidth * imgheight) + 1) # make it big enough
         rsize = (bsize + 3) & 0xfffc # read size must read a multiple of 4 bytes
         f.seek(offset)
         icondata = []
@@ -118,7 +163,25 @@ def process(f, outfile):
                 print ("Error reading file")
                 return None
             icondata.append(b) # read all lines
+# convert data            
+        offset = 0
+        for row in range(imgheight - 1, -1, -1):
+            offset = explode(icondata[row], res, offset, imgwidth, colors)
+        if colors == 4 and ct_size <= 4: # reduce color size from 4 to 2 is feasible
+            colors = 2
+            icon_colors = colors
+        offset = implode(res, offset, colors)
 # store data
+        outfile.write("{}: (\n".format(no_icons))
+        for i in range(offset):
+            if (i % 16) == 0:
+                outfile.write("    b'")
+            outfile.write("\\x{:02x}".format(res[i]))
+            if (i % 16) == 15:
+                outfile.write("'\n")
+        if (i % 16) != 15:
+            outfile.write("'\n")
+        outfile.write("),\n")
     else:
         f.seek(offset)
         if colors == 16:
@@ -145,13 +208,13 @@ def process(f, outfile):
                     return None
                 icondata.append(b) # read all lines
 #                
-    outfile.write("{}: (\n".format(no_icons))
-    for row in range(imgheight - 1, -1, -1):
-        outfile.write("    b'")
-        for i in range (bsize):
-            outfile.write("\\x{:02x}".format(icondata[row][i]))
-        outfile.write("'\n")
-    outfile.write("),\n")
+        outfile.write("{}: (\n".format(no_icons))
+        for row in range(imgheight - 1, -1, -1):
+            outfile.write("    b'")
+            for i in range (bsize):
+                outfile.write("\\x{:02x}".format(icondata[row][i]))
+            outfile.write("'\n")
+        outfile.write("),\n")
     no_icons += 1
     return no_icons
 
