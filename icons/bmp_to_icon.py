@@ -183,6 +183,8 @@ def process(f, outfile):
             outfile.write("'\n")
         outfile.write("),\n")
     else:
+        if icon_colortable is None:
+            icon_colortable = bytearray(0)
         f.seek(offset)
         if colors == 16:
             bsize = imgwidth * 2
@@ -210,10 +212,14 @@ def process(f, outfile):
 #                
         outfile.write("{}: (\n".format(no_icons))
         for row in range(imgheight - 1, -1, -1):
-            outfile.write("    b'")
             for i in range (bsize):
+                if (i % 16) == 0:
+                    outfile.write("    b'")
                 outfile.write("\\x{:02x}".format(icondata[row][i]))
-            outfile.write("'\n")
+                if (i % 16) == 15:
+                    outfile.write("'\n")
+            if (i % 16) != 15:
+                outfile.write("'\n")
         outfile.write("),\n")
     no_icons += 1
     return no_icons
@@ -229,22 +235,24 @@ from uctypes import addressof
   
 def write_trailer(outfile):
     outfile.write('}\n\n')
-    outfile.write("colortable = (\n    b'")
+    outfile.write("colortable = { 0: (\n    b'")
     size = len(icon_colortable)
+    if (size >= 8): # only for bitmaps with a colortable
+        icon_colortable[3] = icon_colors  # store color bits in table
     for i in range(size):
         outfile.write("\\x{:02x}".format(icon_colortable[i]))
         if (i % 16) == 15 and i != (size - 1):
             outfile.write("'\n    b'")
-    outfile.write("')\n\n")
+    outfile.write("')\n}\n")
     outfile.write("width = {}\n".format(icon_width))
     outfile.write("height = {}\n".format(icon_height))
     outfile.write("colors = {}\n".format(icon_colors))
     outfile.write("""
-def get_icon(index):
-    return width, height, addressof(_icons[index]), colors, addressof(colortable)
+def get_icon(icon_index = 0, color_index = 0):
+    return width, height, addressof(_icons[icon_index]), colors, addressof(colortable[color_index])
     
-def draw(x, y, index, draw_fct):
-    draw_fct(x - width//2, y - height // 2, width, height, addressof(_icons[index]), colors, addressof(colortable))
+def draw(x, y, icon_index, draw_fct, color_index = 0):
+    draw_fct(x - width//2, y - height // 2, width, height, addressof(_icons[icon_index]), colors, addressof(colortable[color_index]))
 """)
 
 def load_bmp(sourcefiles, destfile):
