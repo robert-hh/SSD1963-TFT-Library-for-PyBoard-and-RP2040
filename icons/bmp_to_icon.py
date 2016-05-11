@@ -36,6 +36,7 @@ icon_width = None
 icon_height = None
 icon_colortable = None
 icon_colors = None
+file_icon_colors = None
 icon_table = []
 no_icons = 0
 
@@ -111,6 +112,7 @@ def process(f, outfile):
     global icon_height
     global icon_colortable
     global icon_colors
+    global file_icon_colors
     global icon_table
     global no_icons
     
@@ -130,11 +132,11 @@ def process(f, outfile):
     else:
         icon_height = imgheight
         
-    if icon_colors is not None and icon_colors != colors:
-        print ("Error: All icons in a set must have the same number of colors")
+    if file_icon_colors is not None and file_icon_colors != colors:
+        print ("Error: All icons in a set must have the same number of colors", file_icon_colors, colors)
         return None
     else:
-        icon_colors = colors
+        file_icon_colors = icon_colors = colors
         
     if colors in (1,4,8):  # must have a color table
         if ct_size == 0: # if 0, size is 2**colors
