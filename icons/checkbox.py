@@ -107,19 +107,19 @@ _icons = {
 ),
 }
 
-colortable = (
+colortable = { 0: (
     b'\x35\x1a\x00\x00\x48\x2e\x14\x00\x66\x4c\x32\x00\x84\x6e\x6d\x00'
     b'\xa6\x94\x85\x00\xdb\xb7\x91\x00\xc2\xb6\xaf\x00\xf7\xc0\x83\x00'
     b'\xf9\xd2\xa1\x00\xe3\xcf\xb4\x00\xd6\xce\xcc\x00\xfa\xde\xb7\x00'
     b'\xfd\xe7\xc7\x00\xf4\xed\xdd\x00\xe8\xeb\xe9\x00\xfc\xff\xfc\x00')
+}
 
 width = 32
 height = 32
 colors = 4
 
-def get_icon(no):
-    return width, height, addressof(_icons[no]), colors, addressof(colortable)
+def get_icon(icon_index = 0, color_index = 0):
+    return width, height, addressof(_icons[icon_index]), colors, addressof(colortable[color_index])
     
-def draw(x, y, index, draw_fct):
-    draw_fct(x - width//2, y - height // 2, width, height, addressof(_icons[index]), colors, addressof(colortable))
-
+def draw(x, y, icon_index, draw_fct, color_index = 0):
+    draw_fct(x - width//2, y - height // 2, width, height, addressof(_icons[icon_index]), colors, addressof(colortable[color_index]))
