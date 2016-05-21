@@ -15,8 +15,8 @@ This port uses at least 11 control lines for the 8080-type interface style:
 |Y10|6|/RD|Only when reading is required|
 |Y11|5|/WR||
 |Y12|4|C/D| |
-|X3|19|LED|Tie TFT input to Vcc if switching is not required|
-|X4|-|TFT Vcc On/Off|Requires external circuitry|  
+|Y3|19|LED|Tie TFT input to Vcc if switching is not required|
+|Y4|-|TFT Vcc On/Off|Requires external circuitry|  
 
 If you only write to the display's frame buffer, RD (Y10) may be left open, but
 then the transparency modes of printChar() do not work any more. The pulse
@@ -69,7 +69,7 @@ used e.g. by clearSCR() or fillRectangle().
 
 ### Create instance
 
-**mytft = TFT(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])**  
+**mytft = TFT(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False][, power_control = True)**  
 Create an instance of the tft class, initialize the controller and clear
 the screen. Parameters:  
 **controller**: String with the controller model. At the moment, "SSD1963"
@@ -79,10 +79,11 @@ is the only one supported
 **orientation**: which is LANDSCAPE or PORTRAIT  
 **flip_vertical**: Flip vertical True/False  
 **flip_horizontal**: Flip horizontal True/False  
+**power_control**: Flag, whether the TFT power is switched by Y4 (True/False)  
 
 ### Functions:
 
-**tft_init(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False])**  
+**tft_init(controller, lcd_type, orientation [, flip_vertical = False][, flip_horizontal = False][, power_control = True)**  
 Repeat the initialization which was peformed during creation of the instance.  
 This function must be called if the TFT power was switched off, but PyBoard
 kept  on running. tft_init is called by __init__() during the creation of the
@@ -128,6 +129,8 @@ cleared, use **printClrSCR()**.
 **backlight(percent)**  
 Set the LED backlight brightness to percent (0..100). 0 means backlight off.
 This function requires the LED-A pin of the TFT to be connected to Y3.
+The initialization of Y3 is deffered until the first call of backlight. If
+Y3 and tim4 is used for another purpose, do not call this function.
 
 **power(Switch)**  
 Switch the power of the TFT on (Switch == True) or off (Switch = False). After
