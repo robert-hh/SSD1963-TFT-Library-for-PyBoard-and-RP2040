@@ -237,15 +237,19 @@ from uctypes import addressof
   
 def write_trailer(outfile):
     outfile.write('}\n\n')
-    outfile.write("colortable = { 0: (\n    b'")
-    size = len(icon_colortable)
-    if (size >= 8): # only for bitmaps with a colortable
-        icon_colortable[3] = icon_colors  # store color bits in table
-    for i in range(size):
-        outfile.write("\\x{:02x}".format(icon_colortable[i]))
-        if (i % 16) == 15 and i != (size - 1):
-            outfile.write("'\n    b'")
-    outfile.write("')\n}\n")
+    outfile.write("colortable = {\n")
+    for x in range(2):
+        outfile.write("{}: (\n    b'".format(x))
+        size = len(icon_colortable)
+        if (size >= 8): # only for bitmaps with a colortable
+            icon_colortable[3] = icon_colors  # store color bits in table
+        for i in range(size):
+            val = icon_colortable[i] if x == 0 else min(int(icon_colortable[i] * factor), 255)
+            outfile.write("\\x{:02x}".format(val))
+            if (i % 16) == 15 and i != (size - 1):
+                outfile.write("'\n    b'")
+        outfile.write("'),\n")
+    outfile.write("}\n")
     outfile.write("width = {}\n".format(icon_width))
     outfile.write("height = {}\n".format(icon_height))
     outfile.write("colors = {}\n".format(icon_colors))
@@ -271,6 +275,7 @@ def load_bmp(sourcefiles, destfile):
 
 
 if __name__ == "__main__":
+    global factor
     parser = argparse.ArgumentParser(__file__, description = 
 """Utility for producing a icon set file for the tft module by converting BMP files. 
 Sample usage: ./bmp_to_icon.py checkbox_empty.bmp checkbox_tick.bmp
@@ -278,6 +283,7 @@ Produces icons.py""",
     formatter_class = argparse.RawDescriptionHelpFormatter)
     parser.add_argument('infiles', metavar ='N', type = str, nargs = '+', help = 'input file paths')
     parser.add_argument("--outfile", "-o", default = 'icons', help = "Path and name of output file (w/o extension)", required = False)
+    parser.add_argument("--dim", type = float, default = 0.5, help = "Dimming factor for disabled controls. Default 0.5.")
     args = parser.parse_args()
     errlist = [f for f in args.infiles if not f[0].isalpha()]
     if len(errlist):
@@ -297,6 +303,7 @@ Produces icons.py""",
             for f in errlist:
                 print(f)
     if len(errlist) == 0:
+        factor = args.dim
         load_bmp(args.infiles, args.outfile)
 
 
