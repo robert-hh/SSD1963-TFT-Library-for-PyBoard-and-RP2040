@@ -9,7 +9,7 @@ It is a port of the great UTFT driver from Rinky-Dink Electronics, Henning Karls
 This port uses at least 11 control lines for the 8080-type interface style:
 
 |PyBoard|TFT Pin|Function|Comment|
-|:---|:---|:---|:---|
+|:---:|:---:|:---:|:---|
 |X1..X8|21..28|D0..D7|Data port|
 |Y9|17|/Reset| |
 |Y10|6|/RD|Only when reading is required|
@@ -453,6 +453,61 @@ this applies to all characters
 **firstchar**: the ordinal number of the first character in the font set
 
 
+# Graphical Icons
+
+The method drawBitmap() is provided for showing bitmap data of various bit sizes
+per pixel. This is suitable to display graphical icons. As support for preparing
+such ichon sets a helper program, bmp_to_icon, is available, which takes a set of Windows BMP files and creates a suitable python file, which then can be imported and used.
+calling '`./bmp_to_icon -h` result in the following output:
+
+    usage: ./bmp_to_icon.py [-h] [--outfile OUTFILE] N [N ...]
+
+    Utility for producing a icon set file for the tft module by converting BMP files.
+    Sample usage: ./bmp_to_icon.py checkbox_empty.bmp checkbox_tick.bmp
+    Produces icons.py
+
+    positional arguments:
+    N                     input file paths
+
+    optional arguments:
+    -h, --help            show this help message and exit
+    --outfile OUTFILE, -o OUTFILE
+                        Path and name of output file (w/o extension)
+
+All bmp input file must have the same size and color depth. The color table from
+first file is used for all icons in the set. The program creates two dictionaries,
+one for the icons and one for the colortables. In addition to the colortable
+for the first bmp file, a second colortable is created whith dimmed colors.
+Further colortables may be added manually, like inverted ones.
+If all grapics have 4 colours, a 2 bit version of the bitmap is created, which
+is supported by the drawBitap() method. The created icon file include
+two methods for displaying the icons:
+
+**get_icon(icon_index, color_index)**
+The method retuns a tuple of icon properties, which can directly by supplied to
+the drawBitmap call, e.g. by:
+
+    import tft
+    import my_icons
+
+    mytft = tft.TFT()
+    mytft.drawBitmap(\*my_icons.get_icon(0))
+
+The default values for icon_index and color_index are 0.
+
+**draw(x, y, icon_index. draw_fct, color_index)**
+
+Draw the icon number icon_index at position (x,y) using draw_fct. The latter is
+typicall drawBitmap. Again, The default values for icon_index and color_index
+are 0. Sample call:
+
+    import tft
+    import my_icons
+
+    mytft = tft.TFT()
+    my_icons.draw(x, y, 0, mytft.drawBitmap)
+
+
 # Files
 
 - tft.py: Source file with comments. This part may be put into flash as frozen bytecode
@@ -460,6 +515,8 @@ this applies to all characters
 - TFTfont.py: Font class template, used by the font files. Freezable.
 - fonts/\*: Sample fonts and the tool to convert the output of the GLCD-program
 into files needed by this library. All fonts can be stored in frozen bytecode.
+- icons/\*: Sample icons, tool to convert bmp files into icons and howto file
+ explaining how to prepare a set of icons for conversion using Gimp.
 - README.md: this one
 - tft_test.py: Sample code using the tft library
 - vt100.py: Sample code with a VT100 terminal emulation function.
@@ -497,10 +554,10 @@ As an example: the function setXY(), coded in assembler, needs 0.9 µs for the
 execution of the function body, but calling it and returning needs at least
 additional 4.7 µs. In a real coding situation, observed 6 µs. The function
 drawPixel(), when used to fill the whole screen, takes 9 µs for a call, in
-contrat to about 1µs the net function body takes for it's task.
+contrast to about 1µs the net function body takes for it's task.
 Comparing the same job implemented in Viper or Assembler code, the Viper code is
-about twices as long and therefore takes about twices as long. Nevertheless,
-it's easier to read & write. Thus, I typically implemented the Viper version
+about twice as long and therefore takes about twice the time. But
+it is easier to read & write. Thus, I typically implemented the Viper version
 first, and then translated the simple ones into Assmbler.
 
 # Short Version History
@@ -566,3 +623,8 @@ setTextStyle(), setTextPos() and printString() or printChar()
 - Optional color parameter to all drawing functions
 - Support of 1, 4 and 8 bit color depth of bmp data.
 - changed getTextStyle() such that is matches setTextStyle()
+
+**1.0** Support for graphical icon files
+
+- Tool bmp_to_icon.py
+- Updated README.md

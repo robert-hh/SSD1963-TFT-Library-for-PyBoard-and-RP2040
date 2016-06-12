@@ -70,10 +70,13 @@ def displayfile(mytft, name, width, height):
                     n = split_read(f, colortable, ct_size * 4) # read colortable
                     if colors == 1:
                         bsize = imgwidth // 8
+                    elif colors == 2:
+                        bsize = imgwidth // 4
                     elif colors == 4:
                         bsize = imgwidth // 2
                     elif colors == 8:
                         bsize = imgwidth
+                    bsize = (bsize + 3) & 0xfffc # must read a multiple of 4 bytes
                     b = bytearray(bsize)
                     f.seek(offset)
                     for row in range(height - skip - 1, -1, -1):
@@ -84,7 +87,7 @@ def displayfile(mytft, name, width, height):
                 else:
                     f.seek(offset)
                     if colors == 16:
-                        bsize = imgwidth * 2
+                        bsize = (imgwidth*2 + 3) & 0xfffc # must read a multiple of 4 bytes
                         b = bytearray(bsize)
                         for row in range(height - skip - 1, -1, -1):
                             n = split_read(f, b, bsize)
@@ -92,7 +95,7 @@ def displayfile(mytft, name, width, height):
                                 break
                             mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
                     elif colors == 24:
-                        bsize = imgwidth * 3
+                        bsize = (imgwidth * 3 + 3) & 0xfffc # must read a multiple of 4 bytes
                         b = bytearray(bsize)
                         for row in range(height - skip - 1, -1, -1):
                             n = split_read(f, b, bsize)
