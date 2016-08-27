@@ -240,6 +240,41 @@ class TFT:
                         # VSYNC,   Set VT 525  VPS 23 VPW 08 FPS 0
                 TFT_io.tft_cmd_data_AS(0x36, bytearray([(orientation & 1) << 5 | (h_flip & 1) << 1 | (v_flip) & 1]), 1)
                         # rotation/ flip, etc., t.b.d.
+            elif lcd_type == "AT090TN10": # Size 800x480, 9", 24 Bit, lower color bits ignored
+                #
+                # Value            Min     Typical   Max
+                # DotClock       26.4 MHz 33.3 MHz  46.8 MHz
+                # HT (Hor. Total   862     1056     1200
+                # HDP (Hor. Disp)          800
+                # HBP (back porch)  46      46       46
+                # HFP (Fr. porch)   16     210      354
+                # HPW (Hor. sync)   1                40
+                # VT (Vert. Total) 510     525      650
+                # VDP (Vert. Disp)         480
+                # VBP (back porch)  23      23       23
+                # VFP (fr. porch)   7       22      147
+                # VPW (vert. sync)  1                20
+                #
+                # This table in combination with the relation above leads to the settings:
+                # HPS = 46, HPW = 8,  LPS = 0, HT = 1056
+                # VPS = 23, VPW = 10, VPS = 0, VT = 525
+                #
+                self.disp_x_size = 799
+                self.disp_y_size = 479
+                TFT_io.tft_cmd_data_AS(0xe6, bytearray(b'\x05\x53\xf6'), 3) # PLL setting for PCLK
+                    # (33.3MHz * 1048576 / 100MHz) - 1 = 349174 = 0x553f6
+                TFT_io.tft_cmd_data_AS(0xb0, bytearray(  # # LCD SPECIFICATION
+                    [0x20,                # 24 Color bits, HSync/VSync low, No Dithering/FRC
+                     0x00,                # TFT mode
+                     self.disp_x_size >> 8, self.disp_x_size & 0xff, # physical Width of TFT
+                     self.disp_y_size >> 8, self.disp_y_size & 0xff, # physical Height of TFT
+                     0x00]), 7)  # Last byte only required for a serial TFT
+                TFT_io.tft_cmd_data_AS(0xb4, bytearray(b'\x04\x1f\x00\x2e\x08\x00\x00\x00'), 8)
+                        # HSYNC,      Set HT 1056  HPS 46  HPW 8 LPS 0
+                TFT_io.tft_cmd_data_AS(0xb6, bytearray(b'\x02\x0c\x00\x17\x08\x00\x00'), 7)
+                        # VSYNC,   Set VT 525  VPS 23 VPW 08 FPS 0
+                TFT_io.tft_cmd_data_AS(0x36, bytearray([(orientation & 1) << 5 | (h_flip & 1) << 1 | (v_flip) & 1]), 1)
+                        # rotation/ flip, etc., t.b.d.
             else:
                 print("Wrong Parameter lcd_type: ", lcd_type)
                 return
