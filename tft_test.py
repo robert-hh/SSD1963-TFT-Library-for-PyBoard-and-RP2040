@@ -16,20 +16,6 @@ KEEP_BG = const(2)  # keep background data for text
 INV_BG  = const(4)  # invert the background data for text
 INV_FG  = const(8)  # use the inverted background data for text color
 
-# split read, due to the bug in the SD card library, avoid reading
-# more than 512 bytes at once, at a performance penalty
-# required if the actual file position is not a multiple of 4
-def split_read(f, buf, n):
-    BLOCKSIZE = const(512) ## a sector
-    mv = memoryview(buf)
-    bytes_read = 0
-    for i in range(0, n - BLOCKSIZE, BLOCKSIZE):
-        bytes_read += f.readinto(mv[i:i + BLOCKSIZE])
-    if bytes_read < n and (n - bytes_read) <= BLOCKSIZE:
-        bytes_read += f.readinto(mv[bytes_read:n])
-    return bytes_read
-
-
 def displayfile(mytft, name, width, height):
     with open(name, "rb") as f:
         gc.collect()
@@ -67,7 +53,7 @@ def displayfile(mytft, name, width, height):
                         ct_size = 1 << colors
                     colortable = bytearray(ct_size * 4)
                     f.seek(hdrsize + 14) # go to colortable
-                    n = split_read(f, colortable, ct_size * 4) # read colortable
+                    n = f.readinto(colortable) # read colortable
                     if colors == 1:
                         bsize = imgwidth // 8
                     elif colors == 2:
@@ -80,7 +66,7 @@ def displayfile(mytft, name, width, height):
                     b = bytearray(bsize)
                     f.seek(offset)
                     for row in range(height - skip - 1, -1, -1):
-                        n = split_read(f, b, bsize)
+                        n = f.readinto(b)
                         if n != bsize:
                             break
                         mytft.drawBitmap(0, row, imgwidth, 1, b, colors, colortable)
@@ -90,15 +76,15 @@ def displayfile(mytft, name, width, height):
                         bsize = (imgwidth*2 + 3) & 0xfffc # must read a multiple of 4 bytes
                         b = bytearray(bsize)
                         for row in range(height - skip - 1, -1, -1):
-                            n = split_read(f, b, bsize)
+                            n = f.readinto(b)
                             if n != bsize:
                                 break
                             mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
                     elif colors == 24:
-                        bsize = (imgwidth * 3 + 3) & 0xfffc # must read a multiple of 4 bytes
+                        bsize = (imgwidth*3 + 3) & 0xfffc # must read a multiple of 4 bytes
                         b = bytearray(bsize)
                         for row in range(height - skip - 1, -1, -1):
-                            n = split_read(f, b, bsize)
+                            n = f.readinto(b)
                             if n != bsize:
                                 break
                             mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
