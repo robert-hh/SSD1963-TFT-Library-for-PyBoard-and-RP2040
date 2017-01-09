@@ -338,7 +338,7 @@ settings as (x2 - x1 + 1) \* (y2 - y1 + 1). **data** must be a bytearray object
 of 2 * size length with the 16 bit packed red-green-blue values per pixel.
 The color pattern per word is rrrrrggggggbbbbb, with rrrrr in the lower (=first) byte.
 
-**TFT_io.displaySCR_fontbitmap(bitmap: ptr8, size: int, control: ptr8, bg_buf: ptr8)**  
+**TFT_io.displaySCR_charbitmap(bitmap: ptr8, size: int, control: ptr8, bg_buf: ptr8)**  
 Fill the region set with setXY() with the pixel values given
 in bitmap. **bitmap** contains a single bit per pixel . The highest order bit
 in a byte is the first to be displayed. **size** is the number of bits the
@@ -349,8 +349,8 @@ Bytes 0..2: Background color, which is used for a bit value of 0
 Bytes 3..5: Foreground color, which is used for a bit value of 1  
 Byte 6: Transparency mode. See setTextStyle for the value definition   
 
-**bg_buf** must contain the frame buffer data for the pixel area chose. It is
-used only when the respective transparency mode is choses. If not used,
+**bg_buf** must contain the frame buffer data for the pixel area chosen. It is
+used only when the respective transparency mode is selected. If not used,
 an empty bytearray must be supplied. No size checking is performed.
 
 **TFT_io.displaySCR_bmp(bitmap: ptr8, size: int, bits: ptr8, colortable: ptr8)**  
