@@ -60,8 +60,11 @@ def displaySCR_charbitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
     bm_ptr = 0
     bg_ptr = 0
     mask   = 0x80
+    cols = size & 0x3ff
+    pixcount = (size >> 10) * cols # rows & columns coded
+    
 #
-    while size:
+    while pixcount:
 
         if bits[bm_ptr] & mask:
             if transparency & 8: # Invert bg color as foreground
@@ -138,12 +141,17 @@ def displaySCR_charbitmap(bits: ptr8, size: int, control: ptr8, bg_buf: ptr8):
                 gpiob[1] = WR       # set WR low. C/D still high
                 gpiob[0] = WR       # set WR high again
         mask >>= 1
-        if mask == 0: # mask reset & data ptr advance on byte exhaust
+        cols -= 1
+        if cols <= 0: # column bit counter expired
             mask = 0x80
             bm_ptr += 1
-        size -= 1
+            cols = size & 0x3ff
+        elif mask == 0: # mask reset & data ptr advance on byte exhaust
+            mask = 0x80
+            bm_ptr += 1
+        pixcount -= 1
         bg_ptr += 3
-#
+
 # display Windows BMP data, optionally with colortables
 #
 @micropython.viper        
