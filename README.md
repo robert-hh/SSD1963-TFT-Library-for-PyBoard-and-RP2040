@@ -2,6 +2,8 @@
 ===============================================
 
 This fork uses fonts created with [font-to-py](https://github.com/peterhinch/micropython-font-to-py.git)
+Its purpose is to provide a version for the [TFT GUI](https://github.com/peterhinch/micropython-tft-gui.git)
+to enable it to use fonts of that format.
 
 # Description and physical interface
 
