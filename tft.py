@@ -240,41 +240,6 @@ class TFT:
                         # VSYNC,   Set VT 525  VPS 23 VPW 08 FPS 0
                 TFT_io.tft_cmd_data_AS(0x36, bytearray([(orientation & 1) << 5 | (h_flip & 1) << 1 | (v_flip) & 1]), 1)
                         # rotation/ flip, etc., t.b.d.
-            elif lcd_type == "AT090TN10": # Size 800x480, 9", 24 Bit, lower color bits ignored
-                #
-                # Value            Min     Typical   Max
-                # DotClock       26.4 MHz 33.3 MHz  46.8 MHz
-                # HT (Hor. Total   862     1056     1200
-                # HDP (Hor. Disp)          800
-                # HBP (back porch)  46      46       46
-                # HFP (Fr. porch)   16     210      354
-                # HPW (Hor. sync)   1                40
-                # VT (Vert. Total) 510     525      650
-                # VDP (Vert. Disp)         480
-                # VBP (back porch)  23      23       23
-                # VFP (fr. porch)   7       22      147
-                # VPW (vert. sync)  1                20
-                #
-                # This table in combination with the relation above leads to the settings:
-                # HPS = 46, HPW = 8,  LPS = 0, HT = 1056
-                # VPS = 23, VPW = 10, VPS = 0, VT = 525
-                #
-                self.disp_x_size = 799
-                self.disp_y_size = 479
-                TFT_io.tft_cmd_data_AS(0xe6, bytearray(b'\x05\x53\xf6'), 3) # PLL setting for PCLK
-                    # (33.3MHz * 1048576 / 100MHz) - 1 = 349174 = 0x553f6
-                TFT_io.tft_cmd_data_AS(0xb0, bytearray(  # # LCD SPECIFICATION
-                    [0x20,                # 24 Color bits, HSync/VSync low, No Dithering/FRC
-                     0x00,                # TFT mode
-                     self.disp_x_size >> 8, self.disp_x_size & 0xff, # physical Width of TFT
-                     self.disp_y_size >> 8, self.disp_y_size & 0xff, # physical Height of TFT
-                     0x00]), 7)  # Last byte only required for a serial TFT
-                TFT_io.tft_cmd_data_AS(0xb4, bytearray(b'\x04\x1f\x00\x2e\x08\x00\x00\x00'), 8)
-                        # HSYNC,      Set HT 1056  HPS 46  HPW 8 LPS 0
-                TFT_io.tft_cmd_data_AS(0xb6, bytearray(b'\x02\x0c\x00\x17\x08\x00\x00'), 7)
-                        # VSYNC,   Set VT 525  VPS 23 VPW 08 FPS 0
-                TFT_io.tft_cmd_data_AS(0x36, bytearray([(orientation & 1) << 5 | (h_flip & 1) << 1 | (v_flip) & 1]), 1)
-                        # rotation/ flip, etc., t.b.d.
             else:
                 print("Wrong Parameter lcd_type: ", lcd_type)
                 return
@@ -687,7 +652,8 @@ class TFT:
     def setTextStyle(self, fgcolor=None, bgcolor=None, transparency=None, font=None, gap=None):
         if font is not None:
             self.text_font = font
-            self.text_rows, self.text_cols, nchar, first = font.get_properties() #
+            self.text_rows = font.height()
+            self.text_cols = font.max_width()
         if transparency is not None:
             self.transparency = transparency
         if gap is not None:
@@ -766,10 +732,12 @@ class TFT:
     def printChar(self, c, bg_buf=None):
 # get the charactes pixel bitmap and dimensions
         if self.text_font:
-            fontptr, rows, cols = self.text_font.get_ch(ord(c))
+            fmv, rows, cols = self.text_font.get_ch(c)
         else:
             raise AttributeError('No font selected')
-        pix_count = cols * rows   # number of bits in the char
+        cbytes, cbits = divmod(cols, 8)  # Not in packed format
+        dcols = (cbytes + 1) * 8 if cbits else cbytes * 8 # cols for display
+        pix_count = dcols * rows   # number of bits in the char
 # test char fit
         if self.text_x + cols > self.text_width:  # does the char fit on the screen?
             if self.text_scroll:
@@ -781,13 +749,13 @@ class TFT:
         if self.transparency: # in case of transpareny, the frame buffer content is needed
             if bg_buf is None:    # buffer allocation needed?
                 bg_buf = bytearray(pix_count * 3) # sigh...
-            self.setXY(self.text_x, self.text_y, self.text_x + cols - 1, self.text_y + rows - 1) # set area
+            self.setXY(self.text_x, self.text_y, self.text_x + dcols - 1, self.text_y + rows - 1) # set area
             TFT_io.tft_read_cmd_data_AS(0x2e, bg_buf, pix_count * 3) # read background data
         else:
             bg_buf = 0 # dummy assignment, since None is not accepted
 # Set XY range & print char
-        self.setXY(self.text_x, self.text_y, self.text_x + cols - 1, self.text_y + rows - 1) # set area
-        TFT_io.displaySCR_charbitmap(fontptr, pix_count, self.text_color, bg_buf) # display char!
+        self.setXY(self.text_x, self.text_y, self.text_x + dcols - 1, self.text_y + rows - 1) # set area
+        TFT_io.displaySCR_charbitmap(addressof(fmv), pix_count, self.text_color, bg_buf) # display char!
 #advance pointer
         self.text_x += (cols + self.text_gap)
         return cols + self.text_gap

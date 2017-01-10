@@ -1,6 +1,8 @@
 **TFT Class for a TFT with SSD1963 controller**
 ===============================================
 
+This fork uses fonts created with [font-to-py](https://github.com/peterhinch/micropython-font-to-py.git)
+
 # Description and physical interface
 
 A Python class for controlling a graphical display with a SSD1963 controller
@@ -9,7 +11,7 @@ It is a port of the great UTFT driver from Rinky-Dink Electronics, Henning Karls
 This port uses at least 11 control lines for the 8080-type interface style:
 
 |PyBoard|TFT Pin|Function|Comment|
-|:---:|:---:|:---:|:---|
+|:---|:---|:---|:---|
 |X1..X8|21..28|D0..D7|Data port|
 |Y9|17|/Reset| |
 |Y10|6|/RD|Only when reading is required|
@@ -398,125 +400,35 @@ Swap the first and third byte in byte triples of **data**. Data must contain
 exchange blue and red
 
 
-# Class TFTfont
+# Python font files
 
-Fonts used by the TFT lib are instances of a class. They are created in two steps:
+Fonts should be created using the ``font_to_py.py`` utility documented
+[here](https://github.com/peterhinch/micropython-font-to-py.git). The
+``-x`` argument should be employed.
 
-1. Use GLCD font converter of MicroElectronica
-[http://www.mikroe.com/glcd-font-creator/](http://www.mikroe.com/glcd-font-creator/)
-to convert an ttf or otf font into a C data file. Take care to export the C variant.
-The free version may not allow to store the file directly. Then make use of the
-option 'Copy to Clipboard'. By default, the character values 32 to 127 are
-converted. You may extend that. There is a bug in the tool appearing when you start at
-char 0. Then, only the first char will be exported. If you like to include 0,
-you have to do two steps (char 0 and char 1..xx) and combine the output manually.
+A font file is imported in the usual way e.g. ``import font14``. It contains
+the following methods which return values defined by the arguments provided
+to font-to-py:
 
-2.  Use the script cfont_to_packed_py.py to convert the C-file ouput of GLCD
-into a python script, containing the font class, e.g.  
-`./cfont_to_packed_py.py font12.c -o font12.py`  
-If your character set does not start with the space character, you have to manually add
-another argument to the creation of the instance, which is the ordinal value of
-the first char in the font.
+``height`` Returns height in pixels.  
+``max_width`` Returns maximum width of a glyph in pixels.  
+``hmap`` Returns ``True`` if font is horizontally mapped. Should return ``True``  
+``reverse`` Returns ``True`` if bit reversal was specified. Should return ``False``  
+``monospaced`` Returns ``True`` if monospaced rendering was specified.  
 
-The resulting python file can be imported to your code, defining font names, e.g.  
-`from font12 import font12`  
-The font class exports three functions:
+Glyphs are returned with the ``get_ch`` method. Its argument is a charcter
+and it returns the following values:
 
-**TFTfont(fontbitmap, index, vert, hor, no_of_chars [, first_char=32])**  
-This creates the instance of the font. Parameters are:  
-**fontbitmap**:  the data array with the pixel data  
-**index**: an index array with the offsets of the character bitmaps to the
-start of the array  
-**vert**: the vertical size of the font in pixels  
-**hor**: the largest horizontal size of the font in pixels. For
-proportionally spaced fonts this value may differ for every characters  
-**no_of_chars**: the number of characters defined in this font  
-**first_char**: the ordinal value of the first characted in the font.
-Default is 32 (Space)
-
-**get_char(c)**  
-Return the character bitmap and dimensions. **c** is the ordinal value of the
-character. The return value is a tuple comprising of:  
-**bitmap**: The address of a packed bitmap defining character pixels
-row-by-row. Taken as Python object, this is an int, to be seen by a viper or
-assembler function as a ptr8 data type.  
-**vert**: The vertical size of the character  
-**hor**:  the horizontal size of the character  
-The total number of bits in the character bitmap is n = vert*hor.
-
-**get_properties()**  
-Return a tuple with the basic properties of the font. These are:  
-**bits_vert**: the number of vertical pixels  
-**bits_hor**: the largest number of horizontal pixels. For monospaced fonts,
-this applies to all characters  
-**nchar**: the number of characters in the font set  
-**firstchar**: the ordinal number of the first character in the font set
-
-
-# Graphical Icons
-
-The method drawBitmap() is provided for showing bitmap data of various bit sizes
-per pixel. This is suitable to display graphical icons. As support for preparing
-such ichon sets a helper program, bmp_to_icon, is available, which takes a set of Windows BMP files and creates a suitable python file, which then can be imported and used.
-calling '`./bmp_to_icon -h` result in the following output:
-
-    usage: ./bmp_to_icon.py [-h] [--outfile OUTFILE] N [N ...]
-
-    Utility for producing a icon set file for the tft module by converting BMP files.
-    Sample usage: ./bmp_to_icon.py checkbox_empty.bmp checkbox_tick.bmp
-    Produces icons.py
-
-    positional arguments:
-    N                     input file paths
-
-    optional arguments:
-    -h, --help            show this help message and exit
-    --outfile OUTFILE, -o OUTFILE
-                        Path and name of output file (w/o extension)
-
-All bmp input file must have the same size and color depth. The color table from
-first file is used for all icons in the set. The program creates two dictionaries,
-one for the icons and one for the colortables. In addition to the colortable
-for the first bmp file, a second colortable is created whith dimmed colors.
-Further colortables may be added manually, like inverted ones.
-If all grapics have 4 colours, a 2 bit version of the bitmap is created, which
-is supported by the drawBitap() method. The created icon file include
-two methods for displaying the icons:
-
-**get_icon(icon_index, color_index)**
-The method retuns a tuple of icon properties, which can directly by supplied to
-the drawBitmap call, e.g. by:
-
-    import tft
-    import my_icons
-
-    mytft = tft.TFT()
-    mytft.drawBitmap(\*my_icons.get_icon(0))
-
-The default values for icon_index and color_index are 0.
-
-**draw(x, y, icon_index. draw_fct, color_index)**
-
-Draw the icon number icon_index at position (x,y) using draw_fct. The latter is
-typicall drawBitmap. Again, The default values for icon_index and color_index
-are 0. Sample call:
-
-    import tft
-    import my_icons
-
-    mytft = tft.TFT()
-    my_icons.draw(x, y, 0, mytft.drawBitmap)
-
+ * A ``memoryview`` object containg the glyph bytes.
+ * The height in pixels.
+ * The character width in pixels.
 
 # Files
 
 - tft.py: Source file with comments. This part may be put into flash as frozen bytecode
 - TFT_io.py: lower level viper and assembler functions
-- TFTfont.py: Font class template, used by the font files. Freezable.
-- fonts/\*: Sample fonts and the tool to convert the output of the GLCD-program
+- fonts/\*: Sample fonts and the tool to convert fonts to Python freezable source.
 into files needed by this library. All fonts can be stored in frozen bytecode.
-- icons/\*: Sample icons, tool to convert bmp files into icons and howto file
- explaining how to prepare a set of icons for conversion using Gimp.
 - README.md: this one
 - tft_test.py: Sample code using the tft library
 - vt100.py: Sample code with a VT100 terminal emulation function.
@@ -527,6 +439,10 @@ into files needed by this library. All fonts can be stored in frozen bytecode.
     tft_test.py script shows how to display them on the TFT.
 - TFT_Adaper_for_PyBoard_3.zip: A PCB sketch for an adapter PCB, created
 with KiCad, including a PyBoard module.
+
+Note: the ``tft_test`` program requires some work to properly accommodate the
+new type of font. At the moment I've hacked it to use just two font files. Also
+some of the bitmaps don't work for reasons I've not yet established.
 
 # Remarks
 **To Do**
@@ -554,10 +470,10 @@ As an example: the function setXY(), coded in assembler, needs 0.9 µs for the
 execution of the function body, but calling it and returning needs at least
 additional 4.7 µs. In a real coding situation, observed 6 µs. The function
 drawPixel(), when used to fill the whole screen, takes 9 µs for a call, in
-contrast to about 1µs the net function body takes for it's task.
+contrat to about 1µs the net function body takes for it's task.
 Comparing the same job implemented in Viper or Assembler code, the Viper code is
-about twice as long and therefore takes about twice the time. But
-it is easier to read & write. Thus, I typically implemented the Viper version
+about twices as long and therefore takes about twices as long. Nevertheless,
+it's easier to read & write. Thus, I typically implemented the Viper version
 first, and then translated the simple ones into Assmbler.
 
 # Short Version History
@@ -623,8 +539,3 @@ setTextStyle(), setTextPos() and printString() or printChar()
 - Optional color parameter to all drawing functions
 - Support of 1, 4 and 8 bit color depth of bmp data.
 - changed getTextStyle() such that is matches setTextStyle()
-
-**1.0** Support for graphical icon files
-
-- Tool bmp_to_icon.py
-- Updated README.md
