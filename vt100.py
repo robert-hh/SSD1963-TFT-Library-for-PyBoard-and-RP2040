@@ -5,6 +5,7 @@ import os, gc, pyb
 
 import tft
 from font7hex import font7hex
+from font7mono import font7mono
 
 DIM_BG  = const(1)  # dim background data for text
 KEEP_BG = const(2)  # keep background data for text
@@ -282,7 +283,7 @@ class VT100:
             self.cursor() # toggle cursor on
 
 def test():
-    tty = VT100(font7hex)
+    tty = VT100(font7mono)
     cmd = ""
     while cmd != "q":
         tty.printStr('\x0c')
@@ -315,9 +316,9 @@ def test():
         tty.printStr("If the text ends with -, it will be printed w/o CR-LF\r\n")
         tty.printStr("Otherwise the text will be printed, followed by CR-LF\r\n")
         cmd = " "
-        while cmd != "q" and cmd != "":
+        while True:
             cmd = input("Command: ")
-            if cmd != "":
+            if cmd != "q" and cmd != "":
                 if cmd[0] == "[":
                     tty.printStr("\x1b" + cmd)
                 elif cmd[0] == "\\":
@@ -327,6 +328,8 @@ def test():
                         tty.printStr(cmd)
                     else:
                         tty.printStr(cmd + "\r\n")
-                
+            else:
+                break
+    tty.printStr('\x0c')
 
 test()

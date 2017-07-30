@@ -5,30 +5,16 @@ import os, gc, pyb
 from struct import unpack
 
 import tft
-import font14 as dejavu14
-import font10 as font6mono
-import font10 as dejavu10
-import font10 as sevensegnumfont
-import font10 as font7hex
+from dejavu14 import dejavu14
+from font6mono import font6mono
+from dejavu10 import dejavu10
+from sevensegnumfont import sevensegnumfont
+from font7hex import font7hex
 
 DIM_BG  = const(1)  # dim background data for text
 KEEP_BG = const(2)  # keep background data for text
 INV_BG  = const(4)  # invert the background data for text
 INV_FG  = const(8)  # use the inverted background data for text color
-
-# split read, due to the bug in the SD card library, avoid reading
-# more than 512 bytes at once, at a performance penalty
-# required if the actual file position is not a multiple of 4
-def split_read(f, buf, n):
-    BLOCKSIZE = const(512) ## a sector
-    mv = memoryview(buf)
-    bytes_read = 0
-    for i in range(0, n - BLOCKSIZE, BLOCKSIZE):
-        bytes_read += f.readinto(mv[i:i + BLOCKSIZE])
-    if bytes_read < n and (n - bytes_read) <= BLOCKSIZE:
-        bytes_read += f.readinto(mv[bytes_read:n])
-    return bytes_read
-
 
 def displayfile(mytft, name, width, height):
     with open(name, "rb") as f:
@@ -67,35 +53,38 @@ def displayfile(mytft, name, width, height):
                         ct_size = 1 << colors
                     colortable = bytearray(ct_size * 4)
                     f.seek(hdrsize + 14) # go to colortable
-                    n = split_read(f, colortable, ct_size * 4) # read colortable
+                    n = f.readinto(colortable) # read colortable
                     if colors == 1:
                         bsize = imgwidth // 8
+                    elif colors == 2:
+                        bsize = imgwidth // 4
                     elif colors == 4:
                         bsize = imgwidth // 2
                     elif colors == 8:
                         bsize = imgwidth
+                    bsize = (bsize + 3) & 0xfffc # must read a multiple of 4 bytes
                     b = bytearray(bsize)
                     f.seek(offset)
                     for row in range(height - skip - 1, -1, -1):
-                        n = split_read(f, b, bsize)
+                        n = f.readinto(b)
                         if n != bsize:
                             break
                         mytft.drawBitmap(0, row, imgwidth, 1, b, colors, colortable)
                 else:
                     f.seek(offset)
                     if colors == 16:
-                        bsize = imgwidth * 2
+                        bsize = (imgwidth*2 + 3) & 0xfffc # must read a multiple of 4 bytes
                         b = bytearray(bsize)
                         for row in range(height - skip - 1, -1, -1):
-                            n = split_read(f, b, bsize)
+                            n = f.readinto(b)
                             if n != bsize:
                                 break
                             mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
                     elif colors == 24:
-                        bsize = imgwidth * 3
+                        bsize = (imgwidth*3 + 3) & 0xfffc # must read a multiple of 4 bytes
                         b = bytearray(bsize)
                         for row in range(height - skip - 1, -1, -1):
-                            n = split_read(f, b, bsize)
+                            n = f.readinto(b)
                             if n != bsize:
                                 break
                             mytft.drawBitmap(0, row, imgwidth, 1, b, colors)
@@ -125,7 +114,7 @@ def main(v_flip = False, h_flip = False):
     tft.TFT_io.fillSCR_AS(mytft.BGcolorvect, 480 * 816)
 
     mytft.backlight(100)
-    bg_buf = bytearray(dejavu14.max_width() * dejavu14.height() * 3) # preallocate the buffer for transparency
+    bg_buf = bytearray(dejavu14.bits_horiz * dejavu14.bits_vert * 3) # preallocate the buffer for transparency
 
     if True:
         drawpixel = mytft.drawPixel
@@ -183,10 +172,10 @@ def main(v_flip = False, h_flip = False):
         s = "0123456789"
         font = dejavu10
         mytft.setTextStyle((240, 240, 240), None, 0, font, 1)
-        bfa = height % font.height() + font.height()
+        bfa = height % font.bits_vert + font.bits_vert
         vsa = height - bfa
         mytft.setScrollArea(0, vsa, bfa)
-        mytft.setTextPos(0, height - font.height())
+        mytft.setTextPos(0, height - font.bits_vert)
         mytft.printString("           This is the non-scrolling area")
         mytft.setTextPos(0, 0)
         for j in range(70):
@@ -196,7 +185,7 @@ def main(v_flip = False, h_flip = False):
             mytft.printCR()      # No, then CR
             mytft.printNewline() # NL: advance to the next line
             x,y = mytft.getTextPos()
-            mytft.setTextPos(0, height - font.height())
+            mytft.setTextPos(0, height - font.bits_vert)
             mytft.printString("Line {:4} ".format(j))
             mytft.setTextPos(x,y)
         mytft.printString(">")
@@ -256,10 +245,7 @@ def main(v_flip = False, h_flip = False):
     while True:
         for name in files:
 #            name = files[pyb.rng() % len(files)]
-            try:
-                displayfile(mytft, name, width, height)
-            except OSError:
-                print('Error in file ', name)
+            displayfile(mytft, name, width, height)
             mytft.setTextPos(180, 230)
             mytft.printString(name, bg_buf)
             pyb.delay(6000)

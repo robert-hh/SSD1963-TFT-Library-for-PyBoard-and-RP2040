@@ -10,15 +10,14 @@ from font14 import font14
 #
 # Global COnstants
 #
-COUNTER = 5 ## Stop, if no PIR activity for # pictures
-TOTAL_COUNTER = 100 ## Stop after # pictures
+COUNTER = 10 ## Stop, if no PIR activity for # pictures
 BANNER_COUNTER = 20 ## every # picture, the banner is shown
 BANNER_NAME = "banner.bmp"
 TOOLOWBAT = 200 ## Bat Way too low. Must run fromi USB
 SCALING = 7.86 ## Voltage divider (680k + 100k)/100k
 OFFSET = 0.0  ## Voltag at input diode (if any)
 LOWBAT = int((5.4 - OFFSET) / 3.3 / SCALING * 4096) ## 
-WARNBAT = int((5.8 - OFFSET) / 3.3 / SCALING * 4096) ##
+WARNBAT = int((5.9 - OFFSET) / 3.3 / SCALING * 4096) ##
 BANNER_TIME = 5000 ## Time, the banner is shown (ms)
 PICT_TIME = 10000 ## Time, a picture is shown (ms)
 
@@ -62,7 +61,7 @@ def displayfile(mytft, name, width, height):
                             ct_size = 1 << colors
                         colortable = bytearray(ct_size * 4)
                         f.seek(hdrsize + 14) # go to colortable
-                        n = split_read(f, colortable, ct_size * 4) # read colortable
+                        n = f.readinto(colortable) # read colortable
                         if colors == 1:
                             bsize = imgwidth // 8
                         elif colors == 2:
@@ -114,8 +113,51 @@ def displayfile(mytft, name, width, height):
                     mytft.drawBitmap(0, row, width, 1, b, 24)
                 mytft.fillRectangle(0, row, width - 1, height - 1, (0, 0, 0))
         mytft.backlight(100)
-    except FileNotFoundError:
+        return True
+    except OSError:
         mytft.clrSCR()
+        return False
+        
+def display_batlevel(mytft, batval):
+    if LOWBAT <= batval < WARNBAT:
+        mytft.fillCircle(3, 3, 3, (255,255,0))
+    elif TOOLOWBAT < batval < LOWBAT:
+        mytft.fillCircle(3, 3, 3, (255,0,0))
+    else: 
+        pass
+        mytft.fillCircle(3, 3, 3, (0,255,0))
+
+def list_shuffle(list):
+    for i, item in enumerate(list):
+        list[i] = (pyb.rng(), item)
+    list.sort()
+    for i, item in enumerate(list):
+        list[i] = item[1]
+    return list
+
+def get_files(serial, random):
+    has_banner = False
+    shuffle = False
+    try:
+        os.chdir(serial)
+        files = os.listdir(".")
+        files.sort()
+    except:
+        try:
+            os.chdir(random)
+            files = os.listdir(".")
+            shuffle = True
+        except:
+            files = ["default.bmp"]
+            os.chdir("/sd")
+        
+    for i, name in enumerate(files):
+        if name == BANNER_NAME:
+            has_banner = True
+            del files[i]
+            break
+            
+    return files, has_banner, shuffle
 
 PIR_flag = False
 
@@ -168,60 +210,50 @@ def main(v_flip = False, h_flip = False):
     
     if TFT_SIZE == 9:
 ## The 9 inch board has X19/X20 swapped. For this board, use the alternative code
-        extint = pyb.ExtInt(pyb.Pin.board.X20, pyb.ExtInt.IRQ_RISING, pyb.Pin.PULL_NONE, callback) ## large PCB
+        extint = pyb.ExtInt(pyb.Pin.board.X20, pyb.ExtInt.IRQ_RISING, pyb.Pin.PULL_DOWN, callback) ## large PCB
     else:
         extint = pyb.ExtInt(pyb.Pin.board.X19, pyb.ExtInt.IRQ_RISING, pyb.Pin.PULL_NONE, callback)
     extint.enable()
 
-    total_cnt = 0
-
-    if TFT_SIZE == 4:
-        os.chdir("img_272x480")
-    else:
-        os.chdir("img_480x800")
-    files = os.listdir(".")
+    files, has_banner, shuffle = get_files("/sd/serie", "/sd/zufall")
 
     start = COUNTER  # reset timer once
     PIR_flag = False
 
+    file_index = 0
     while True:
         TESTMODE = usb.isconnected()  # On USB, run test mode
-        while True:  # get the next file name, but not banner.bmp
-            myrng = pyb.rng()
-            name = files[myrng % len(files)]
-            if name != BANNER_NAME:
-                break
-
-        batval = adc.read()
+            # on every series start create a random shuffle
+        if file_index == 0 and shuffle == True:
+            files = list_shuffle(files)
+        name = files[file_index]
+        file_index = (file_index + 1) % len(files)
+## on USB supply assume good battery
+        if USBSUPPLY == False:
+            batval = adc.read()
+        else:
+            batval = WARNBAT + 1
         if TESTMODE:
-            print("Battery: ", batval, ", Files: ", len(files), ", File: ", name, ", RNG: ", myrng)
+            print("Battery: ", batval, ", Files: ", len(files), ", File: ", name)
 
-# test for low battery, switch off, or total count reached
+## test for low battery, switch off
         if (TOOLOWBAT < batval < LOWBAT) and USBSUPPLY == False:
             tft_standby(mytft)
             while True: # stay there until reset
                 pyb.stop()
 
-        if (total_cnt % BANNER_COUNTER) == 0:
+        if (file_index % BANNER_COUNTER) == 1 and has_banner == True:
             displayfile(mytft, BANNER_NAME, width, height)
-            mytft.setTextPos(0, 0)
-            if LOWBAT <= batval < WARNBAT:
-                textcolor = (255,255,0)
-            elif TOOLOWBAT < batval < LOWBAT:
-                textcolor = (255,0,0)
-            else: 
-                textcolor = (0,255,0)
-            mytft.setTextStyle(textcolor, None, 0, font14)
-            mytft.printString("{:.3}V - {} - {}".format(((batval * 3.3 * SCALING) / 4096) + OFFSET, batval, total_cnt))
+            display_batlevel(mytft, batval)
             pyb.delay(BANNER_TIME)
 
-        total_cnt += 1
-        displayfile(mytft, name, width, height)
-        pyb.delay(PICT_TIME)
+        if displayfile(mytft, name, width, height):
+            display_batlevel(mytft, batval)
+            pyb.delay(PICT_TIME)
 
         if PIR_flag == False: ## For one picture activity, check inactivity counter
             start -= 1
-            if start <= 0 or total_cnt > TOTAL_COUNTER:  # no activity,  long enough
+            if start <= 0:  # no activity,  long enough
                 if TESTMODE == False:
                     tft_standby(mytft) # switch TFT off and ports inactive
                     pyb.delay(200)
@@ -234,13 +266,11 @@ def main(v_flip = False, h_flip = False):
                     mytft.setTextPos(0, 0)
                     pyb.delay(100)
                     batval = adc.read()
-                    mytft.printString("{:.3}V - {}".format(((batval * 3.3 * SCALING) / 4096) + OFFSET, total_cnt))
+                    mytft.printString("{:.3}V - {}".format(((batval * 3.3 * SCALING) / 4096) + OFFSET, file_index))
                     mytft.printNewline()
                     mytft.printCR()
                     mytft.printString("Should switch off here for a second")
                     pyb.delay(3000)
-                    if total_cnt > TOTAL_COUNTER:
-                        total_cnt = 0
                 PIR_flag = False
                 start = COUNTER  # reset timer
         else: # activity. restart counter
