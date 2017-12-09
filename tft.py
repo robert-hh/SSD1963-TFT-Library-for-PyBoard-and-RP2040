@@ -687,8 +687,7 @@ class TFT:
     def setTextStyle(self, fgcolor=None, bgcolor=None, transparency=None, font=None, gap=None):
         if font is not None:
             self.text_font = font
-            self.text_rows = font.height()
-            self.text_cols = font.max_width()
+            self.text_rows, self.text_cols, nchar, first = font.get_properties() #
         if transparency is not None:
             self.transparency = transparency
         if gap is not None:
@@ -767,7 +766,7 @@ class TFT:
     def printChar(self, c, bg_buf=None):
 # get the charactes pixel bitmap and dimensions
         if self.text_font:
-            fmv, rows, cols = self.text_font.get_ch(c)
+            fontptr, rows, cols = self.text_font.get_ch(ord(c))
         else:
             raise AttributeError('No font selected')
         pix_count = cols * rows   # number of bits in the char
@@ -788,7 +787,7 @@ class TFT:
             bg_buf = 0 # dummy assignment, since None is not accepted
 # Set XY range & print char
         self.setXY(self.text_x, self.text_y, self.text_x + cols - 1, self.text_y + rows - 1) # set area
-        TFT_io.displaySCR_charbitmap(addressof(fmv), (rows << 10) | cols, self.text_color, bg_buf) # display char!
+        TFT_io.displaySCR_charbitmap(fontptr, pix_count, self.text_color, bg_buf) # display char!
 #advance pointer
         self.text_x += (cols + self.text_gap)
         return cols + self.text_gap
