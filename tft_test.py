@@ -5,9 +5,9 @@ import os, gc, pyb
 from struct import unpack
 
 import tft
-from dejavu14 import dejavu14
+from font14 import font14
 from font6mono import font6mono
-from dejavu10 import dejavu10
+from font10 import font10
 from sevensegnumfont import sevensegnumfont
 from font7hex import font7hex
 
@@ -114,7 +114,7 @@ def main(v_flip = False, h_flip = False):
     tft.TFT_io.fillSCR_AS(mytft.BGcolorvect, 480 * 816)
 
     mytft.backlight(100)
-    bg_buf = bytearray(dejavu14.bits_horiz * dejavu14.bits_vert * 3) # preallocate the buffer for transparency
+    bg_buf = bytearray(font14.bits_horiz * font14.bits_vert * 3) # preallocate the buffer for transparency
 
     if True:
         drawpixel = mytft.drawPixel
@@ -135,7 +135,7 @@ def main(v_flip = False, h_flip = False):
     
     if False:
         mytft.clrSCR()
-        font = dejavu10
+        font = font10
         mytft.setTextStyle((240, 240, 240), None, 0, font, 0)
         mytft.setTextPos(0, 0, 200, False)
         print(mytft.printString("This text wil be cut after some characters"))
@@ -170,7 +170,7 @@ def main(v_flip = False, h_flip = False):
     if True:
         mytft.clrSCR()
         s = "0123456789"
-        font = dejavu10
+        font = font10
         mytft.setTextStyle((240, 240, 240), None, 0, font, 1)
         bfa = height % font.bits_vert + font.bits_vert
         vsa = height - bfa
@@ -201,10 +201,10 @@ def main(v_flip = False, h_flip = False):
         pyb.delay(2000)
 
         mytft.setTextPos(0, 0)
-        mytft.setTextStyle((0, 255, 0), None, KEEP_BG, dejavu14)
+        mytft.setTextStyle((0, 255, 0), None, KEEP_BG, font14)
         mytft.printString("ABCDE        NOPQRSTUVWXYZ", bg_buf)
         mytft.setTextPos(0, 40)
-        mytft.setTextStyle((0, 255, 0), None, 0, dejavu14)
+        mytft.setTextStyle((0, 255, 0), None, 0, font14)
         mytft.printString("abcdefghijklmnopqrstuvwxyz")
         mytft.setTextPos(0, 80)
         mytft.printString("0123456789!\"$%&/()=?")
@@ -241,7 +241,7 @@ def main(v_flip = False, h_flip = False):
 
     files = "F0012.bmp", "F0010.raw", "F0013.data","F0020_1.bmp", "F0020_2.bmp", "F0020_4.bmp", "F0020_8.bmp", "F0020.bmp", "F0013.bmp"
 
-    mytft.setTextStyle((255, 255, 255), None, KEEP_BG | INV_FG, dejavu14)
+    mytft.setTextStyle((255, 255, 255), None, KEEP_BG | INV_FG, font14)
     while True:
         for name in files:
 #            name = files[pyb.rng() % len(files)]
@@ -251,4 +251,5 @@ def main(v_flip = False, h_flip = False):
             pyb.delay(6000)
 
 main(v_flip = False, h_flip = False)
+
 
