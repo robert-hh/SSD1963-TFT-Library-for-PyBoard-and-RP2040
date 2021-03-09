@@ -220,7 +220,7 @@ def main(v_flip = False, h_flip = False):
     start = COUNTER  # reset timer once
     PIR_flag = False
 
-    file_index = 0
+    file_index = 1  # 1: do not start with banner, 0: Start with banner
     while True:
         TESTMODE = usb.isconnected()  # On USB, run test mode
             # on every series start create a random shuffle
