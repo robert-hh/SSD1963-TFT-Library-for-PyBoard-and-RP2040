@@ -35,12 +35,12 @@ def displayfile(mytft, name, width, height):
                 n = f.readinto(b)
                 if not n:
                     break
-                tft.TFT_io.swapbytes(b, width * 2)
+                mytft.tft_io.swapbytes(b, width * 2)
                 mytft.drawBitmap(0, row, width, 1, b, 16)
             mytft.fillRectangle(0, row, width - 1, height - 1, (0, 0, 0))
         elif mode == "bmp":  # Windows bmp file
             BM, filesize, res0, offset = unpack("<hiii", f.read(14))
-            (hdrsize, imgwidth, imgheight, planes, colors, compress, imgsize, 
+            (hdrsize, imgwidth, imgheight, planes, colors, compress, imgsize,
              h_res, v_res, ct_size, cti_size) = unpack("<iiihhiiiiii", f.read(40))
             if imgwidth <= width: ##
                 skip = ((height - imgheight) // 2)
@@ -101,7 +101,7 @@ def displayfile(mytft, name, width, height):
                 n = f.readinto(b)
                 if not n:
                     break
-                tft.TFT_io.swapcolors(b, width * 3)
+                mytft.tft_io.swapcolors(b, width * 3)
                 mytft.drawBitmap(0, row, width, 1, b, 24)
             mytft.fillRectangle(0, row, width - 1, height - 1, (0, 0, 0))
     mytft.backlight(100)
@@ -111,7 +111,7 @@ def main(v_flip = False, h_flip = False):
     mytft = tft.TFT("SSD1963", "LB04301", tft.LANDSCAPE, v_flip, h_flip)
     width, height = mytft.getScreensize()
     mytft.setXY(0, 0, 479, 815) # manual clear of the pyhsical frame buffer
-    tft.TFT_io.fillSCR_AS(mytft.BGcolorvect, 480 * 816)
+    mytft.tft_io.fillSCR_AS(mytft.BGcolorvect, 480 * 816)
 
     mytft.backlight(100)
     bg_buf = bytearray(font14.bits_horiz * font14.bits_vert * 3) # preallocate the buffer for transparency
@@ -126,13 +126,13 @@ def main(v_flip = False, h_flip = False):
         time0 = pyb.elapsed_millis(start)
         print('DrawPixels: {} ms'.format(time0))
         pyb.delay(2000)
-        
+
         start = pyb.millis()
         mytft.fillRectangle(0, 0, 479, 271, bytes(b'\x00\xff\xff')) # burst fill
         time0 = pyb.elapsed_millis(start)
         print('FillRectangle: {} ms'.format(time0))
         pyb.delay(2000)
-    
+
     if False:
         mytft.clrSCR()
         font = font10
@@ -143,21 +143,21 @@ def main(v_flip = False, h_flip = False):
         pyb.delay(4000)
 
 
-    
+
     if True:
         mytft.clrSCR()
         mytft.setTextPos(0, height * 0)
         mytft.setTextStyle((255, 0, 0), None, 0, font7hex)
         mytft.printString("This is text on Page 1")
-        
+
         mytft.setTextPos(0, height * 1)
         mytft.setTextStyle((0, 255, 0), None, 0, font7hex)
         mytft.printString("This is text on Page 2")
-        
+
         mytft.setTextPos(0, height * 2)
         mytft.setTextStyle((0, 0, 255), None, 0, font7hex)
         mytft.printString("This is text on Page 3")
-        
+
         for i in range(3):
             mytft.setScrollStart(height * 0)
             pyb.delay(1000)
@@ -230,7 +230,7 @@ def main(v_flip = False, h_flip = False):
         buf = bytearray(5000)
         with open ("logo50.raw", "rb") as f:
             n = f.readinto(buf)
-        tft.TFT_io.swapbytes(buf, 5000)
+        mytft.tft_io.swapbytes(buf, 5000)
         for i in range(10):
             mytft.clrSCR()
             for cnt in range(50):
