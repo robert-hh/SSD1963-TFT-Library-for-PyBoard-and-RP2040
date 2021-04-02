@@ -39,7 +39,7 @@
 
 import pyb, stm, gc
 from uctypes import addressof
-from TFT_io import TFT_IO
+from tft_io import TFT_IO
 
 # define constants
 #
